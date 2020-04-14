@@ -1,0 +1,108 @@
+---
+micronaut:
+  application:
+    name: micronaut-kotlin-blanco-sample
+  router:
+    static-resources:
+      date:
+        enabled: true
+        paths: classpath:public/date
+        mapping: /date/**
+
+---
+datasources:
+  # デフォルトのコネクションプール設定
+  default:
+    # ${...} は、プレースホルダーであり、環境変数または、システムプロパティで設定可能
+    # プレースホルダー中のコロンより後ろは、デフォルト値
+    # デフォルト値は、バッククォート「`」で囲んだ値を指定する。
+    # デフォルト値を指定せず（password のようにコロンの後を空にする）、
+    # 環境変数などで設定しない場合 null 扱いとなる。エラーとはならない。
+    # デフォルト値を指定しない（コロンを付けない）場合は、
+    # 環境変数などで設定をしないと起動時にエラーとなる。
+    # 環境変数で設定する場合「DB_DEFAULT_URL」で指定すると url が指定できる。
+    # 環境変数の「_」は、プレースホルダーキーの「.-」と見なされる。
+    # システムプロパティの場合は、キャメルケースも「-」で分割して一致する。
+    # 設定とキーの一致法則については、以下の「Table 1. Property Value Normalization」を参照。
+    # https://docs.micronaut.io/latest/guide/index.html#propertySource
+    url: ${db.default.url:`jdbc:mysql://localhost:3306`}
+    username: ${db.default.username:`root`}
+    # 【注意】デフォルト値に「``」と設定すると、パスワードありで空のパスワードを指定することになる。
+    # パスワード無しの設定にするには、デフォルト値には何も設定しないこと
+    password: ${db.default.password:}
+    # デフォルトでは、古いクラス指定になってしまうため、指定が必須となる
+    driverClassName: 'com.mysql.cj.jdbc.Driver'
+    # デフォルトは、自動コミットになる
+    autoCommit: false
+    # データベース指定
+    catalog: ${db.database:`sample00`}
+    # コネクション時のタイムアウト(ms)
+    connectionTimeout: 1000
+    # 未使用（アイドル状態）コネクションの切断時間(ms)
+    # コネクションがプール内で待機状態を維持できる最大時間。タイムアウトすると切断状態となる。
+    idleTimeout: ${db.idle.timeout:`10000`}
+    # 最大コネクション保持数
+    maximumPoolSize: ${db.maximum.pool.size:`10`}
+    # 切断状態のコネクションが、プールから削除されるまでの時間
+    maxLifetime: ${db.max.lifetime:`1800000`}
+    # 最小コネクション保持数
+    minimumIdle: ${db.minimum.idle:`0`}
+    # ログなどに出力されるプール名
+    # デフォルトでは、「HikariPool-1」のような名称となる
+    poolName: Pool-RW
+    # 読み込み専用設定
+    readOnly: false
+    # トランザクション分離レベル
+    # MySQL のデフォルトは、「TRANSACTION_REPEATABLE_READ」
+    # デフォルト値の場合、同一処理内では、default 側で Commit した内容を readonly 側では参照できない。
+    transactionIsolation: TRANSACTION_READ_COMMITTED
+    # MySQL Connector/J のプロパティを設定
+    # HikariDataSource の dataSourceProperties に格納され、最終的に MySQL Connector/J に伝播する。
+    # この設定は、構造化せずに以下のようにピリオドでキーを結合して値を定義することもできる。
+    # data-source-properties.cachePropStmts: true
+    # 設定の内容は、HikariCP が推奨している項目の一部となり、それ以外の設定も記載しているので注意。
+    # 詳細は、以下を参照。
+    # https://github.com/brettwooldridge/HikariCP/wiki/MySQL-Configuration
+    # MySQL Connector/J に設定できるプロパティは、以下を参照
+    # https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-reference-configuration-properties.html
+    data-source-properties:
+      cachePropStmts: true
+      prepStmtCacheSize: 250
+      prepStmtCacheSqlLimit: 2048
+      useServerPrepStmts: true
+      useLocalSessionState: true
+      rewriteBatchedStatements: true
+      cacheResultSetMetadata: true
+      cacheServerConfiguration: true
+      elideSetAutoCommits: true
+      maintainTimeStats: false
+      # ResultSet フェッチモードをカーソルモードに変更（デフォルトは、全件一括取得）
+      useCursorFetch: true
+      defaultFetchSize: 2000
+      # ロガーを Slf4J に変更
+      logger: Slf4JLogger
+      # ログに SQL のプロファイル情報を出力
+      profileSQL: true
+      # サーバ側プリペアド ステートメントを含む、実行中の SQL を STDERR へダンプ
+      autoGenerateTestcaseScript: true
+      # サーバに送られたクエリの内容を、SQLExceptions のメッセージにダンプ
+      dumpQueriesOnException: true
+      # 'logSlowQueries' が有効な場合、自動的に'EXPLAIN' を発行し、WARN レベルログに出力
+      explainSlowQueries: true
+      # 'slowQueryThresholdMillis' より長くかかるクエリを記録
+      logSlowQueries: true
+      # 'logSlowQueries' が有効な場合、クエリが 'slow' と記録されるまでの長さ
+      slowQueryThresholdMillis: 10
+
+  # 複数の DB データソースを利用する場合
+  # 任意の名称で設定可能。
+  # DataSource インジェクション箇所の @Named アノテーションに、この名称を指定する。
+  readonly:
+    url: ${db.default.url:`jdbc:mysql://localhost:3306`}
+    username: ${db.default.username:`root`}
+    password: ${db.default.password:}
+    driverClassName: com.mysql.cj.jdbc.Driver
+    autoCommit: false
+    catalog: ${db.database:`sample00`}
+    poolName: Pool-R
+    readOnly: true

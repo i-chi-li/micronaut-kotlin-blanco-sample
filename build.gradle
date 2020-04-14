@@ -1,0 +1,228 @@
+plugins {
+    id "com.github.johnrengelman.shadow" version "5.2.0"
+    id "application"
+    id "org.jetbrains.kotlin.jvm" version "1.3.71"
+    id "org.jetbrains.kotlin.kapt" version "1.3.71"
+    id "org.jetbrains.kotlin.plugin.allopen" version "1.3.71"
+    // IntelliJ IDEA の設定をするためのプラグイン
+    id "org.jetbrains.gradle.plugin.idea-ext" version "0.7"
+}
+
+version "0.1"
+group "micronaut.kotlin.blanco.sample"
+
+repositories {
+    jcenter()
+    mavenCentral()
+    maven { url "https://jcenter.bintray.com" }
+}
+
+configurations {
+    // for dependencies that are needed for development only
+    developmentOnly
+    // blancoDB 用の設定を定義
+    blancoDb
+}
+
+dependencies {
+    // blancoDB 用の依存関係を設定
+    blancoDb fileTree(dir: "blanco-libs", includes: ["*.jar"])
+    blancoDb "mysql:mysql-connector-java:${mysqlJdbcVersion}"
+
+    implementation platform("io.micronaut:micronaut-bom:$micronautVersion")
+    implementation "io.micronaut:micronaut-http-client"
+    implementation "io.micronaut.configuration:micronaut-jdbc-hikari"
+    implementation "io.micronaut:micronaut-http-server-netty"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlinVersion}"
+    implementation "org.jetbrains.kotlin:kotlin-reflect:${kotlinVersion}"
+    implementation "io.micronaut:micronaut-runtime"
+
+    // MySQL JDBC ドライバ
+    implementation "mysql:mysql-connector-java:${mysqlJdbcVersion}"
+
+    // Kotlin Coroutine を利用する場合に追加
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:${coroutineVersion}"
+    // Kotlin Coroutine を Micronaut から利用する場合に追加
+    // Flow で Stream レスポンスを受けるような場合に、このライブラリがないと、以下のようなエラーとなる。
+    // ERROR i.m.r.intercept.RecoveryInterceptor - Type [micronaut.kotlin.coroutine.sample.HeadlineClient$Intercepted] executed with error: Cannot convert response publisher to Reactive type (Unsupported Reactive type): interface kotlinx.coroutines.flow.Flow
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-reactive:${coroutineVersion}"
+
+    kapt platform("io.micronaut:micronaut-bom:$micronautVersion")
+    kapt "io.micronaut:micronaut-inject-java"
+    kapt "io.micronaut:micronaut-validation"
+
+    kaptTest platform("io.micronaut:micronaut-bom:$micronautVersion")
+    kaptTest "io.micronaut:micronaut-inject-java"
+
+    runtimeOnly "ch.qos.logback:logback-classic:1.2.3"
+    runtimeOnly "com.h2database:h2"
+    runtimeOnly "com.fasterxml.jackson.module:jackson-module-kotlin:2.9.8"
+
+    testImplementation platform("io.micronaut:micronaut-bom:$micronautVersion")
+    testImplementation "io.micronaut.test:micronaut-test-kotlintest"
+    testImplementation "io.mockk:mockk:1.9.3"
+    testImplementation "io.kotlintest:kotlintest-runner-junit5:3.3.2"
+
+    // 以下の 2 つは、JUnit5 でテストを作成する場合に追加。
+    // 「micronaut-test-junit5」は、Micronaut Test ドキュメントの Kotlin でのテストの方に記載が無い（Java の方にはある）。
+    // 追加しないと、テスト実行時に以下のような例外が発生する。
+    // java.lang.ArrayStoreException: sun.reflect.annotation.TypeNotPresentExceptionProxy
+    //     at sun.reflect.annotation.AnnotationParser.parseClassArray(AnnotationParser.java:724)
+    //     ...
+    // 実際に不足しているクラスは、「io.micronaut.test.extensions.junit5.MicronautJunit5Extension」となる。
+    testImplementation "io.micronaut.test:micronaut-test-junit5"
+    testImplementation "org.junit.jupiter:junit-jupiter:5.6.0"
+
+    // Kotlin Coroutine テストユーティリティを利用する場合に追加
+    testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:${coroutineVersion}"
+}
+
+// Java ソースの文字コードを指定
+[compileJava, compileTestJava]*.options*.encoding = "UTF-8"
+
+// blanco の自動生成ソースコードをコンパイル対象に追加
+sourceSets {
+    main {
+        java {
+            srcDirs += 'blanco-src/main'
+        }
+    }
+}
+
+test.classpath += configurations.developmentOnly
+
+mainClassName = "micronaut.kotlin.blanco.sample.Application"
+
+kapt {
+    arguments {
+        // Micronaut でインクリメンタルアノテーション処理を有効化
+        arg("micronaut.processing.incremental", true)
+        // アノテーション処理対象クラスを指定する。カンマ区切りで複数指定可能
+        arg("micronaut.processing.annotations", "micronaut.kotlin.blanco.sample.*,foo.bar.*")
+    }
+}
+
+shadowJar {
+    mergeServiceFiles()
+}
+
+tasks.withType(JavaExec) {
+    classpath += configurations.developmentOnly
+    // '-Dkotlinx.coroutines.debug' は、スレッド名に Coroutine 名を追加するなど、Coroutine に関するログ出力を強化する
+    jvmArgs('-noverify', '-XX:TieredStopAtLevel=1', '-Dcom.sun.management.jmxremote', '-Dkotlinx.coroutines.debug')
+}
+
+test {
+    useJUnitPlatform()
+    // '-Dkotlinx.coroutines.debug' は、スレッド名に Coroutine 名を追加するなど、Coroutine に関するログ出力を強化する
+    jvmArgs('-Dkotlinx.coroutines.debug')
+}
+
+allOpen {
+	annotation("io.micronaut.aop.Around")
+}
+
+compileKotlin {
+	kotlinOptions {
+	    jvmTarget = '1.8'
+	    //Will retain parameter names for Java reflection
+	    javaParameters = true
+        // 「@ExperimentalCoroutinesApi」が付与された機能を利用する場合に追加
+        freeCompilerArgs += "-Xopt-in=kotlin.RequiresOptIn"
+	}
+}
+
+compileTestKotlin {
+	kotlinOptions {
+	    jvmTarget = '1.8'
+	    javaParameters = true
+        // 「@ExperimentalCoroutinesApi」が付与された機能を利用する場合に追加
+        freeCompilerArgs += "-Xopt-in=kotlin.RequiresOptIn"
+	}
+}
+
+// IntelliJ IDEA の設定
+import com.sun.org.apache.xalan.internal.xsltc.cmdline.Compile
+import org.jetbrains.gradle.ext.EncodingConfiguration
+idea {
+    project {
+        settings {
+            // File -> Settings...(Ctrl + Alt + S) -> Editor -> File Encodings の設定
+            encodings {
+                // Project Encoding
+                encoding = "UTF-8"
+                // BOM for new UTF-8 files -> Create new UTF-8 files
+                bomPolicy = EncodingConfiguration.BomPolicy.WITH_NO_BOM
+                // Properties Files (*.properties)
+                properties {
+                    // Default encoding for properties files
+                    encoding = "UTF-8"
+                    // Transparent native-to-ascii conversion
+                    transparentNativeToAsciiConversion = true
+                    // ファイルまたは、ディレクトリを指定してエンコーディングを設定
+                    // ファイル指定の場合は、プロジェクトルートからの相対指定で、ディレクトリ階層も必須。ワイルドカード指定不可
+                    // ディレクトリ指定の場合もファイル指定と同様
+                    // 存在しないファイルやディレクトリを指定した場合、IntelliJ に反映されない。
+                    mapping["gradlew.bat"] = "windows-31j"
+                }
+            }
+        }
+    }
+}
+
+task blancoDb {
+    group "blanco"
+    description "Generate source code by blancoDB"
+    doFirst {
+        // blancodb Ant タスクを定義
+        ant.taskdef(
+            name: "blancodb",
+            classname: "blanco.db.task.BlancoDbTask",
+            // 依存設定を参照
+            classpath: configurations.blancoDb.asPath
+        )
+        // blancodb Ant タスクを実行
+        ant.blancodb(
+            // 詳細なログ出力
+            // 「gradlew blancoDb --debug」で実行すると、
+            // "[ant:blancodb]"を含む行にログが出力される。
+            verbose: true,
+            // JDBC ドライバのクラスを指定する（必須）
+            jdbcdriver: "com.mysql.cj.jdbc.Driver",
+            // JDBC 接続先 URL を指定する（必須）
+            jdbcurl: "jdbc:mysql://localhost:3306/sample00",
+            // JDBC 接続時のユーザ名を指定する（必須）
+            jdbcuser: "root",
+            // JDBC 接続時のパスワードを指定する（必須）
+            // パスワード無しの設定を行う場合は、"" （空文字）を指定する。
+            jdbcpassword: "",
+            // SQL 定義ファイル格納ディレクトリ（ファイル名はマルチバイトでも問題ない）
+            metadir: "blanco-meta/db",
+            // 作業用ディレクトリ
+            tmpdir: "build/tmp/blanco",
+            // 自動生成ファイル格納先ベースディレクトリ
+            targetdir: "blanco-src",
+            // 自動生成クラスのベースパッケージ
+            basepackage: "micronaut.kotlin.blanco.sample.blanco.db",
+            // blancoDB のランタイムパッケージ（共通処理）
+            runtimepackage: "micronaut.kotlin.blanco.sample.blanco.db.runtime",
+            // Oracle DB の場合にスキーマを指定する
+            //schema: "app",
+            // DB のメタ情報を元に、テーブル単位でアクセスする、ソースコードを自動生成する
+            // MySQL の場合は、エラーとなる。
+            table: false,
+            // SQL 定義書を元にソースコードを自動生成する
+            sql: true,
+            // ログモードを指定する。debug, performance, sqlid のいずれかを指定する。
+            logmode: "debug",
+            // Statement のタイムアウト値を指定する。SQL 実行時のタイムアウト設定を行える。
+            //statementtimeout: 0,
+            // 自動生成時に SQL を実行するかどうかを指定する。「iterator」は、検索型のみ実行。「none」は、実行しない。
+            executesql: "iterator",
+            // 自動生成ソースコードのエンコーディング指定
+            encoding: "UTF-8",
+            // 定義書メタファイルから中間 XML ファイルへの変換を、キャッシュで済ますかどうかを指定する
+            //cache: false
+        )
+    }
+}

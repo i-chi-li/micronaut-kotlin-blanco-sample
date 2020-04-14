@@ -1,0 +1,9 @@
+*         text=auto eol=lf
+*.bat     text eol=crlf
+*.jar     -text
+*.jpg     -text
+*.jpeg    -text
+*.png     -text
+*.gif     -text
+*.pdf     -text
+*.xls     -text

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Date</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment-with-locales.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.28/moment-timezone.min.js"></script>
+</head>
+<body>
+<div>
+  <input type="button" value="取得" onclick="getDate()">
+</div>
+<div>
+  <label>TimeZone <input type="text" name="timeZone" size="30"></label>
+</div>
+<div>
+  <label>Date <input type="text" readonly name="date" size="200"></label>
+</div>
+</body>
+<script>
+  let timeZone = document.querySelector("div input[name='timeZone']");
+  let date = document.querySelector("div input[name='date']");
+  function getDate() {
+    let url = "/date/now";
+
+    fetch(url).then(function (response) {
+      response.json().then(function (json) {
+        date.value = new Date(json).toString();
+      });
+    });
+  }
+</script>
+</html>
