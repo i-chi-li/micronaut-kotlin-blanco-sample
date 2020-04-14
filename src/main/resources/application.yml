@@ -3,10 +3,15 @@ micronaut:
   application:
     name: micronaut-kotlin-blanco-sample
   router:
+    # 静的コンテンツを利用する場合の定義
     static-resources:
+      # 任意の名称
       date:
+        # 設定有効化
         enabled: true
+        # コンテンツの場所。ここでは、 src/main/resources/public/date を設定
         paths: classpath:public/date
+        # アクセス URL とのマッピング
         mapping: /date/**
 
 ---
