@@ -29,3 +29,9 @@ blancoDB でのソースコード自動生成方法は、以下のようにす�
 - MySQL を起動
 - mysql -uroot < SQL/DB_Initial.sql
 - gradlew blancoDb
+
+## サンプルコード
+
+- [DB 検索・登録・更新](src/main/kotlin/micronaut/kotlin/blanco/sample/UsersController.kt)
+- [エラーハンドリング](src/main/kotlin/micronaut/kotlin/blanco/sample/GlobalHandlerController.kt)
+- [日時変換処理](src/main/kotlin/micronaut/kotlin/blanco/sample/DateController.kt)
