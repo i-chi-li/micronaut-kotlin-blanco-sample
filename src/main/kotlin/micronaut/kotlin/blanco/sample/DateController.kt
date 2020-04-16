@@ -28,6 +28,8 @@ class DateController {
     @Get("/now")
     @Produces(MediaType.APPLICATION_JSON)
     fun now(): Date {
+        // 返る値は、UNIX エポック・ミリ秒
+        // この値は、タイムゾーンに影響されない。
         return Date()
     }
 
@@ -38,8 +40,35 @@ class DateController {
      */
     @Get("/localDateTime")
     @Produces("${MediaType.APPLICATION_JSON}; ${MediaType.CHARSET_PARAMETER}=utf-8")
-    fun localDateTime(@QueryValue localDateTime: LocalDateTime): String {
-        return localDateTime.toString()
+    fun localDateTime(@QueryValue localDateTime: LocalDateTime): LocalDateTime {
+        // 戻り値は、「[2020,4,14,10,20,30]」（年月日時分秒）の、数値配列となる。
+        return localDateTime
+    }
+
+    /**
+     * ZonedDateTimeConverter で、文字列を ZonedDateTime に変換するサンプル
+     *
+     * curl -i "http://localhost:8080/date/zonedDateTime?zonedDateTime=2020-04-12T10:20:30%2B09:00[Asia/Tokyo]" --globoff
+     * 「--globoff」 は、大括弧を含む場合にエスケープするオプション
+     * %2B は、「+」記号。そのまま送るとスペースに置き換わってしまう
+     */
+    @Get("/zonedDateTime")
+    @Produces("${MediaType.APPLICATION_JSON}; ${MediaType.CHARSET_PARAMETER}=utf-8")
+    fun zonedDateTime(@QueryValue zonedDateTime: ZonedDateTime): ZonedDateTime {
+        // 戻り値は、「1586827230.000000000」のような、UNIX エポック・ミリ秒と小数点以下（ピコ秒）
+        return zonedDateTime
+    }
+
+    /**
+     * OffsetDateTimeConverter で、文字列を OffsetDateTime に変換するサンプル
+     *
+     * curl -i "http://localhost:8080/date/offsetDateTime?offsetDateTime=2020-04-12T10:20:30%2B09:00"
+     * %2B は、「+」記号。そのまま送るとスペースに置き換わってしまう
+     */
+    @Get("/offsetDateTime")
+    @Produces("${MediaType.APPLICATION_JSON}; ${MediaType.CHARSET_PARAMETER}=utf-8")
+    fun offsetDateTime(@QueryValue offsetDateTime: OffsetDateTime): OffsetDateTime {
+        return offsetDateTime
     }
 
     /**
@@ -53,9 +82,12 @@ class DateController {
     @Produces("${MediaType.APPLICATION_JSON}; ${MediaType.CHARSET_PARAMETER}=utf-8")
     @Consumes(MediaType.APPLICATION_JSON)
     fun dateBean(@Body date: DateBean): DateBean {
+        // Bean への変換には、ここで定義したコンバータが利用されないようだ。
         log.info("data: $date")
         return date
     }
+
+
 }
 
 /**
@@ -122,6 +154,23 @@ class ZonedDateTimeConverter : TypeConverter<String, ZonedDateTime> {
         log.info("Start convert String to ZonedDateTime")
         return Optional.ofNullable(str?.let {
             ZonedDateTime.parse(str, formatter)
+        })
+    }
+}
+
+/**
+ * JSON 変換で、String 型を OffsetDateTime 型に変換するために必要
+ */
+@Singleton
+class OffsetDateTimeConverter : TypeConverter<String, OffsetDateTime> {
+    private val log = LoggerFactory.getLogger(this.javaClass)
+    private val formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME
+
+    override fun convert(
+        str: String?, targetType: Class<OffsetDateTime>?, context: ConversionContext?): Optional<OffsetDateTime> {
+        log.info("Start convert String to OffsetDateTime")
+        return Optional.ofNullable(str?.let {
+            OffsetDateTime.parse(str, formatter)
         })
     }
 }
