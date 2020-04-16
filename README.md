@@ -23,10 +23,14 @@ DB 初期化には、SQL/DB_Initial.sql を利用する。
 blancoDB で参照する、SQL 定義書は、meta/db ディレクトリに格納する。
 自動生成ソースコードは、blanco/main/ ディレクトリ以下に生成される。
 
-- blanco-libs: blancoDB のソース自動生成時に利用するライブラリ
-- blanco-meta/db: blancoDB の SQL 定義書を格納するディレクトリ
-- blanco-src: blancoDB で自動生成したソースの格納ディレクトリ
-- SQL: MySQL のテーブル定義 SQL を格納
+- blanco-libs/  
+  blancoDB のソース自動生成時に利用するライブラリを格納
+- blanco-meta/db/  
+  blancoDB の SQL 定義書を格納
+- blanco-src/  
+  blancoDB で自動生成したソースを格納
+- SQL/  
+  MySQL のテーブル定義 SQL を格納
 
 ## blancoDB でのソースコード自動生成方法
 blancoDB でのソースコード自動生成方法は、以下のようにする。
