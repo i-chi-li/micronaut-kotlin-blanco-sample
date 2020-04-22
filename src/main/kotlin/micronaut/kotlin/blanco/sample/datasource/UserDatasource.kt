@@ -1,10 +1,15 @@
 package micronaut.kotlin.blanco.sample.datasource
 
-import micronaut.kotlin.blanco.sample.blanco.db.users.query.*
+import micronaut.kotlin.blanco.sample.blanco.db.users.query.C00I00UsersInvoker
+import micronaut.kotlin.blanco.sample.blanco.db.users.query.C00I01UsersFullInvoker
+import micronaut.kotlin.blanco.sample.blanco.db.users.query.C00I02UsersInsertOrUpdateInvoker
+import micronaut.kotlin.blanco.sample.blanco.db.users.query.C00S00UsersIterator
+import micronaut.kotlin.blanco.sample.blanco.db.users.query.C00S01UsersIterator
 import micronaut.kotlin.blanco.sample.blanco.db.users.row.C00S00UsersRow
 import micronaut.kotlin.blanco.sample.model.Users
 import org.slf4j.LoggerFactory
 import java.sql.Connection
+import java.sql.SQLException
 import java.util.*
 
 class UserDatasource(private val con: Connection) {
@@ -39,6 +44,9 @@ class UserDatasource(private val con: Connection) {
     /**
      * 近代的な記述方法
      *
+     * この関数は、blancoDB オブジェクトを呼び出し毎に生成する。
+     * 性能に影響するため、複数回呼び出す処理には利用しないこと。
+     *
      * 定型コードを集約し、余分な変数の生成を抑制できる。
      * その結果、処理そのものに集中できる。
      * 適切な粒度で集積したコードに明確な名称を付与することで、利用する側でのコメントは、ほぼ不要となる。
@@ -49,7 +57,7 @@ class UserDatasource(private val con: Connection) {
     fun selectModern(): List<Users> {
         // ユーザ全件検索
         val s00UsersIterator = C00S00UsersIterator(con)
-        return try {
+        return runCatching {
             // レコードをすべて処理
             s00UsersIterator
                 // レコードをシーケンス化
@@ -62,9 +70,35 @@ class UserDatasource(private val con: Connection) {
                 }
                 // Users リスト型に変換
                 .toList()
-        } finally {
-            s00UsersIterator.close()
         }
+            // catch 処理
+            .onFailure { throwable ->
+                // ここでは例外を握りつぶすことはできない。
+                // 別の例外（アプリ固有の例外など）にラップして再スローするなどもできる。
+                when (throwable) {
+                    is SQLException -> {
+                        log.error("Error in selectModern", throwable)
+                    }
+                }
+            }
+            // 例外発生時に、代わりの戻り値を生成する処理
+            .recover { throwable ->
+                when (throwable) {
+                    is SQLException -> {
+                        listOf()
+                    }
+                    else -> {
+                        throw throwable
+                    }
+                }
+            }
+            // finally 処理
+            .also {
+                s00UsersIterator.close()
+            }
+            // 正常完了の場合、リストを返し、例外が発生していたら、スローする
+            // その他にも、getOrNull()、getOrElse { ... } や、getOrDefault() などもある。
+            .getOrThrow()
     }
 
     /**
@@ -103,6 +137,9 @@ class UserDatasource(private val con: Connection) {
     /**
      * 条件付きユーザ検索
      *
+     * この関数は、blancoDB オブジェクトを呼び出し毎に生成する。
+     * 性能に影響するため、複数回呼び出す処理には利用しないこと。
+     *
      * @param userId ユーザID
      * @param userName ユーザ名
      * @param password パスワード
@@ -127,7 +164,7 @@ class UserDatasource(private val con: Connection) {
             "userId: $userId, userName: $userName, password: $password, email: $password," +
                 " emailIncludeNull: $emailIncludeNull, createdAt: $createdAt, updatedAt: $updatedAt, sort: $sort")
         val s01UsersIterator = C00S01UsersIterator(con)
-        return try {
+        return runCatching {
             if (sort != null) {
                 // ソート条件が指定されている場合
                 val sql = s01UsersIterator.query
@@ -142,26 +179,36 @@ class UserDatasource(private val con: Connection) {
                 userId, userName, password, email, emailIncludeNull, createdAt, updatedAt
             )
             s01UsersIterator.executeQuery()
-            generateSequence {
-                s01UsersIterator.takeIf { it.next() }?.row
-            }.map { row ->
-                println("createdAt: ${row.createdAt}")
-                Users(
-                    userId = row.userId,
-                    userName = row.userName,
-                    password = row.password,
-                    email = row.email,
-                    createdAt = row.createdAt,
-                    updatedAt = row.updatedAt
-                )
-            }.toList()
-        } finally {
+            s01UsersIterator.toUsersList()
+        }.also {
+            // finally 処理
             s01UsersIterator.close()
-        }
+        }.getOrThrow()
     }
 
     /**
+     * ユーザリストに変換する拡張関数
+     *
+     * @return ユーザリストを返す。
+     */
+    private fun C00S01UsersIterator.toUsersList(): List<Users> = generateSequence {
+        this.takeIf { it.next() }?.row
+    }.map { row ->
+        Users(
+            userId = row.userId,
+            userName = row.userName,
+            password = row.password,
+            email = row.email,
+            createdAt = row.createdAt,
+            updatedAt = row.updatedAt
+        )
+    }.toList()
+
+    /**
      * ユーザ情報登録
+     *
+     * この関数は、blancoDB オブジェクトを呼び出し毎に生成する。
+     * 性能に影響するため、複数回呼び出す処理には利用しないこと。
      *
      * @param userId ユーザID
      * @param userName ユーザ名
@@ -169,13 +216,20 @@ class UserDatasource(private val con: Connection) {
      * @param email E-mail
      */
     fun insert(userId: Int, userName: String, password: String, email: String?) {
-        val i00UsersInvoker = C00I00UsersInvoker(con)
-        i00UsersInvoker.setInputParameter(userId, userName, password, email)
-        i00UsersInvoker.executeSingleUpdate()
+        val invoker = C00I00UsersInvoker(con)
+        runCatching {
+            invoker.setInputParameter(userId, userName, password, email)
+            invoker.executeSingleUpdate()
+        }.also {
+            invoker.close()
+        }
     }
 
     /**
      * ユーザ情報登録（全パラメータ指定）
+     *
+     * この関数は、blancoDB オブジェクトを呼び出し毎に生成する。
+     * 性能に影響するため、複数回呼び出す処理には利用しないこと。
      *
      * @param userId ユーザID
      * @param userName ユーザ名
@@ -193,15 +247,164 @@ class UserDatasource(private val con: Connection) {
     /**
      * ユーザ情報登録または、更新
      *
+     * この関数は、blancoDB オブジェクトを呼び出し毎に生成する。
+     * 性能に影響するため、複数回呼び出す処理には利用しないこと。
+     *
      * @param userId ユーザID
      * @param userName ユーザ名
      * @param password パスワード
      * @param email E-mail
+     * @return 登録・更新件数を返す。ただし、更新時には、1 件の更新が、2 件とカウントされるので注意。
      */
-    fun insertOrUpdate(userId: Int, userName: String, password: String, email: String?) {
-        val i02UsersInsertOrUpdateInvoker = C00I02UsersInsertOrUpdateInvoker(con)
-        i02UsersInsertOrUpdateInvoker.setInputParameter(userId, userName, password, email)
-        val count = i02UsersInsertOrUpdateInvoker.executeUpdate()
-        log.info("count: $count")
+    fun insertOrUpdate(userId: Int, userName: String, password: String, email: String?): Int {
+        val invoker = C00I02UsersInsertOrUpdateInvoker(con)
+        return runCatching {
+            invoker.setInputParameter(userId, userName, password, email)
+            invoker.executeUpdate()
+        }.also { invoker.close() }
+            .getOrThrow()
+    }
+
+    /**
+     * ユーザ情報登録または、更新
+     *
+     * この関数は、blancoDB オブジェクトを呼び出し毎に生成する。
+     * 性能に影響するため、複数回呼び出す処理には利用しないこと。
+     *
+     * @param users ユーザ情報
+     */
+    fun insertOrUpdate(users: Users) {
+        insertOrUpdate(
+            userId = users.userId,
+            userName = users.userName,
+            password = users.password,
+            email = users.email
+        )
+    }
+
+    /**
+     * ユーザ検索（条件付き）
+     *
+     * この関数は、ブロック処理が完了するまで、blancoDB オブジェクトを使い回すため、大量のアクセスに利用できる。
+     *
+     * @param condition 検索条件
+     * @param block 検索条件を生成し、iterate 関数を呼び出し、検索結果を処理するブロック
+     */
+    fun select(
+        condition: C00S01UsersIteratorCondition,
+        // ブロックの型を、インターフェースの拡張関数として定義していることに注目
+        block: BatchQueryIterateScope<C00S01UsersIteratorCondition, List<Users>>.() -> Unit
+    ): Unit {
+        val iterator = C00S01UsersIterator(con)
+        runCatching {
+            // 無名オブジェクトを定義し、iterate 関数を実装する。
+            object : BatchQueryIterateScope<C00S01UsersIteratorCondition, List<Users>> {
+                override fun iterate(conditions: C00S01UsersIteratorCondition): List<Users> {
+                    if (condition.sort != null) {
+                        // ソート条件が指定されている場合
+                        val sql = iterator.query
+                            // 実際に動的 SQL を利用する場合は、受け取ったパラメータをそのまま代入しないこと。
+                            // SQL インジェクションの危険性があり、セキュリティリスクとなる。
+                            // 推奨する実装は、パラメータのチェックを行い、想定した値のみを受け付けるようにする。
+                            .replace("""/\*replace1\*/""".toRegex(), "ORDER BY ${condition.sort}")
+                        log.info("sql: $sql")
+                        iterator.prepareStatement(sql)
+                    }
+                    // 検索条件を設定
+                    iterator.setInputParameter(
+                        condition.userId,
+                        condition.userName,
+                        condition.password,
+                        condition.email,
+                        condition.emailIncludeNull,
+                        condition.createdAt,
+                        condition.updatedAt
+                    )
+                    // 検索実行
+                    iterator.executeQuery()
+                    // 検索結果を返す
+                    return iterator.toUsersList()
+                }
+            }
+                // 引数の関数ブロックを、この無名オブジェクトの関数として呼び出す。
+                .block()
+        }.also {
+            // finally 処理
+            iterator.close()
+        }
+    }
+
+    /**
+     * ユーザ情報登録または、更新
+     *
+     * この関数は、ブロック処理が完了するまで、blancoDB オブジェクトを使い回すため、大量のアクセスに利用できる。
+     *
+     * @param block ユーザ情報を生成して、invoke 関数を呼び出す処理
+     */
+    fun insertOrUpdate(
+        // ブロックの型を、インターフェースの拡張関数として定義していることに注目
+        block: BatchQueryInvokeScope<Users>.() -> Unit
+    ): Unit {
+        // 登録・更新用オブジェクト生成
+        val invoker = C00I02UsersInsertOrUpdateInvoker(con)
+        log.info("Start insertOrUpdate")
+        runCatching {
+            // 無名オブジェクトを定義し、invoke 関数を実装する
+            object : BatchQueryInvokeScope<Users> {
+                override fun invoke(data: Users) {
+                    invoker.setInputParameter(data.userId, data.userName, data.password, data.email)
+                    invoker.executeUpdate()
+                }
+            }
+                // 引数の関数ブロックを、この無名オブジェクトの関数として呼び出す。
+                .block()
+        }.also {
+            // 登録・更新用オブジェクトクローズ
+            invoker.close()
+        }
+        log.info("Finish insertOrUpdate")
     }
 }
+
+
+/**
+ * 連続登録・更新クエリ実行用スコープ
+ *
+ * @param T 登録・更新データ
+ */
+interface BatchQueryInvokeScope<T> {
+    fun invoke(data: T)
+}
+
+/**
+ * 連続検索クエリ実行用スコープ
+ *
+ * @param T 条件データ
+ * @param R 検索結果
+ */
+interface BatchQueryIterateScope<T, R> {
+    fun iterate(conditions: T): R
+}
+
+/**
+ * ユーザ検索用条件
+ *
+ * @property userId ユーザID
+ * @property userName ユーザ名
+ * @property password パスワード
+ * @property email E-mail
+ * @property emailIncludeNull E-mail が null のレコードを検索結果に含めるフラグ
+ * @property createdAt 作成日時
+ * @property updatedAt 更新日時
+ * @property sort ソート条件
+ */
+data class C00S01UsersIteratorCondition(
+    val userId: Int?,
+    val userName: String?,
+    val password: String?,
+    val email: String?,
+    val emailIncludeNull: Boolean,
+    val createdAt: Date?,
+    val updatedAt: Date?,
+    val sort: String?
+)

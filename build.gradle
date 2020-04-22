@@ -4,8 +4,11 @@ plugins {
     id "org.jetbrains.kotlin.jvm" version "1.3.72"
     id "org.jetbrains.kotlin.kapt" version "1.3.72"
     id "org.jetbrains.kotlin.plugin.allopen" version "1.3.72"
+    id "org.jetbrains.kotlin.plugin.noarg" version "1.3.72"
     // IntelliJ IDEA の設定をするためのプラグイン
     id "org.jetbrains.gradle.plugin.idea-ext" version "0.7"
+    // Kotlin Javadoc
+    id 'org.jetbrains.dokka' version '0.10.1'
 }
 
 version "0.1"
@@ -119,31 +122,35 @@ test {
 }
 
 allOpen {
-	annotation("io.micronaut.aop.Around")
+    annotation("io.micronaut.aop.Around")
+}
+
+noArg {
+    annotation("micronaut.kotlin.blanco.sample.CustomBean")
 }
 
 compileKotlin {
-	kotlinOptions {
-	    jvmTarget = '1.8'
-	    //Will retain parameter names for Java reflection
-	    javaParameters = true
+    kotlinOptions {
+        jvmTarget = '1.8'
+        //Will retain parameter names for Java reflection
+        javaParameters = true
         // 「@ExperimentalCoroutinesApi」が付与された機能を利用する場合に追加
         freeCompilerArgs += "-Xopt-in=kotlin.RequiresOptIn"
-	}
+    }
 }
 
 compileTestKotlin {
-	kotlinOptions {
-	    jvmTarget = '1.8'
-	    javaParameters = true
+    kotlinOptions {
+        jvmTarget = '1.8'
+        javaParameters = true
         // 「@ExperimentalCoroutinesApi」が付与された機能を利用する場合に追加
         freeCompilerArgs += "-Xopt-in=kotlin.RequiresOptIn"
-	}
+    }
 }
 
 // IntelliJ IDEA の設定
-import com.sun.org.apache.xalan.internal.xsltc.cmdline.Compile
 import org.jetbrains.gradle.ext.EncodingConfiguration
+
 idea {
     project {
         settings {

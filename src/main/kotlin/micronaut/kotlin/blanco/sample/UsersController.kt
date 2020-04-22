@@ -1,27 +1,27 @@
 package micronaut.kotlin.blanco.sample
 
-import io.micronaut.context.ApplicationContext
-import io.micronaut.context.annotation.Factory
 import io.micronaut.http.MediaType
-import io.micronaut.http.annotation.*
-import io.micronaut.runtime.http.scope.RequestScope
+import io.micronaut.http.annotation.Body
+import io.micronaut.http.annotation.Controller
+import io.micronaut.http.annotation.Get
+import io.micronaut.http.annotation.Post
+import io.micronaut.http.annotation.Produces
 import micronaut.kotlin.blanco.sample.datasource.UserDatasource
 import micronaut.kotlin.blanco.sample.model.Users
 import micronaut.kotlin.blanco.sample.model.UsersView
 import micronaut.kotlin.blanco.sample.model.toUsersView
 import org.slf4j.LoggerFactory
-import java.sql.Connection
 import java.time.ZoneId
 import javax.sql.DataSource
 
 /**
  * ユーザ管理コントローラ
  *
- * @property connection DB コネクション
+ * @property dataSource DB データソース
  */
 @Controller("/users")
 class UsersController(
-    private val connection: Connection
+    private val dataSource: DataSource
 ) {
     /** ロガー */
     private val log = LoggerFactory.getLogger(this.javaClass)
@@ -29,12 +29,14 @@ class UsersController(
     /**
      * ユーザ全件取得
      *
+     * curl -i http://localhost:8080/users/list
+     *
      * @return 全ユーザのリストを返す。
      */
     @Get("/list")
-    @Produces("${MediaType.APPLICATION_JSON}; ${MediaType.CHARSET_PARAMETER}=utf-8")
+    @Produces(MediaType.APPLICATION_JSON)
     fun listAllUsers(): List<Users> {
-        return connection.use {
+        return dataSource.connection.use { connection ->
             val userDatasource = UserDatasource(connection)
             userDatasource.selectModern()
         }
@@ -42,6 +44,8 @@ class UsersController(
 
     /**
      * 条件付きユーザ検索
+     *
+     * curl -i "http://localhost:8080/users?emailIncludeNull=true&sort=user_id%20desc"
      *
      * @param userId ユーザID
      * @param userName ユーザ名
@@ -52,7 +56,7 @@ class UsersController(
      * @return ユーザのリストを返す。
      */
     @Get("/{?userId,userName,password,email,emailIncludeNull,createdAt,updatedAt,sort}")
-    @Produces("${MediaType.APPLICATION_JSON}; ${MediaType.CHARSET_PARAMETER}=utf-8")
+    @Produces(MediaType.APPLICATION_JSON)
     fun findUsers(
         userId: Int?, userName: String?, password: String?, email: String?, emailIncludeNull: String?,
         createdAt: String?, updatedAt: String?, timeZone: String?, sort: String?
@@ -67,7 +71,7 @@ class UsersController(
         val createdAtDate = createdAt?.toDate(zoneId)
         // 更新日時
         val updatedAtDate = updatedAt?.toDate(zoneId)
-        return connection.use {
+        return dataSource.connection.use { connection ->
             val userDatasource = UserDatasource(connection)
             userDatasource.selectCondition(
                 userId, userName, password, email, emailIncludeNullFlag, createdAtDate, updatedAtDate, sort)
@@ -86,7 +90,7 @@ class UsersController(
     @Post("/")
     fun post(@Body users: Users): String {
         log.info("users: $users")
-        connection.use {
+        dataSource.connection.use { connection ->
             val userDatasource = UserDatasource(connection)
             userDatasource.insert(users.userId, users.userName, users.password, users.email)
             connection.commit()
@@ -105,7 +109,7 @@ class UsersController(
     @Post("/full")
     fun postFull(@Body users: Users): String {
         log.info("users: $users")
-        connection.use {
+        dataSource.connection.use { connection ->
             val userDatasource = UserDatasource(connection)
             userDatasource.insertFull(
                 users.userId, users.userName, users.password, users.email, users.createdAt, users.updatedAt)
@@ -125,34 +129,12 @@ class UsersController(
     @Post("/insert_update")
     fun postInsertUpdate(@Body users: Users): String {
         log.info("users: $users")
-        connection.use {
+        dataSource.connection.use { connection ->
             val userDatasource = UserDatasource(connection)
             userDatasource.insertOrUpdate(
                 users.userId, users.userName, users.password, users.email)
             connection.commit()
         }
         return "OK"
-    }
-}
-
-/**
- * Connection インジェクション用
- *
- * @property applicationContext Bean 取得用
- */
-@Factory
-class DBConnectionFactory(
-    private val applicationContext: ApplicationContext
-) {
-    /** ロガー */
-    private val log = LoggerFactory.getLogger(this.javaClass)
-
-    /**
-     * リクエスト毎に Connection インスタンスを生成する
-     */
-    @RequestScope
-    fun getConnection(): Connection {
-        log.info("getConnection")
-        return applicationContext.getBean(DataSource::class.java).connection
     }
 }

@@ -1,6 +1,5 @@
 package micronaut.kotlin.blanco.sample.model
 
-import java.time.Instant
 import java.util.*
 
 /**

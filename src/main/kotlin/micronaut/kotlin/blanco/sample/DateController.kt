@@ -3,7 +3,13 @@ package micronaut.kotlin.blanco.sample
 import io.micronaut.core.convert.ConversionContext
 import io.micronaut.core.convert.TypeConverter
 import io.micronaut.http.MediaType
-import io.micronaut.http.annotation.*
+import io.micronaut.http.annotation.Body
+import io.micronaut.http.annotation.Consumes
+import io.micronaut.http.annotation.Controller
+import io.micronaut.http.annotation.Get
+import io.micronaut.http.annotation.Post
+import io.micronaut.http.annotation.Produces
+import io.micronaut.http.annotation.QueryValue
 import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
@@ -23,7 +29,7 @@ class DateController {
     /**
      * 現在時刻を UNIX EPOCH「エポック」（1970 年 1 月 1 日 00:00:00）からのミリ秒で取得する
      *
-     * curl -i "http://localhost:8080/date/now"
+     * curl -i http://localhost:8080/date/now
      */
     @Get("/now")
     @Produces(MediaType.APPLICATION_JSON)
@@ -39,7 +45,7 @@ class DateController {
      * curl -i "http://localhost:8080/date/localDateTime?localDateTime=2020-04-12T10:20:30"
      */
     @Get("/localDateTime")
-    @Produces("${MediaType.APPLICATION_JSON}; ${MediaType.CHARSET_PARAMETER}=utf-8")
+    @Produces(MediaType.APPLICATION_JSON)
     fun localDateTime(@QueryValue localDateTime: LocalDateTime): LocalDateTime {
         // 戻り値は、「[2020,4,14,10,20,30]」（年月日時分秒）の、数値配列となる。
         return localDateTime
@@ -53,7 +59,7 @@ class DateController {
      * %2B は、「+」記号。そのまま送るとスペースに置き換わってしまう
      */
     @Get("/zonedDateTime")
-    @Produces("${MediaType.APPLICATION_JSON}; ${MediaType.CHARSET_PARAMETER}=utf-8")
+    @Produces(MediaType.APPLICATION_JSON)
     fun zonedDateTime(@QueryValue zonedDateTime: ZonedDateTime): ZonedDateTime {
         // 戻り値は、「1586827230.000000000」のような、UNIX エポック・ミリ秒と小数点以下（ピコ秒）
         return zonedDateTime
@@ -66,7 +72,7 @@ class DateController {
      * %2B は、「+」記号。そのまま送るとスペースに置き換わってしまう
      */
     @Get("/offsetDateTime")
-    @Produces("${MediaType.APPLICATION_JSON}; ${MediaType.CHARSET_PARAMETER}=utf-8")
+    @Produces(MediaType.APPLICATION_JSON)
     fun offsetDateTime(@QueryValue offsetDateTime: OffsetDateTime): OffsetDateTime {
         return offsetDateTime
     }
@@ -79,7 +85,7 @@ class DateController {
      * curl -i "http://localhost:8080/date/bean" -X POST -H "Content-Type:application/json" -d '{"date": 1586827230, "localDateTime": "2020-04-14T10:20:30", "zonedDateTime": "2020-04-14T10:20:30+09:00[Asia/Tokyo]", "offsetDateTime": "2020-04-14T10:20:30+09:00", "zoneId": "Asia/Tokyo", "timeZone": "JST"}'
      */
     @Post("/bean")
-    @Produces("${MediaType.APPLICATION_JSON}; ${MediaType.CHARSET_PARAMETER}=utf-8")
+    @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
     fun dateBean(@Body date: DateBean): DateBean {
         // Bean への変換には、ここで定義したコンバータが利用されないようだ。
@@ -252,3 +258,4 @@ fun Date.toLocalString(
         .toLocalDateTime()
         .format(formatter)
 }
+

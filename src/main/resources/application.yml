@@ -47,7 +47,7 @@ datasources:
     # コネクションがプール内で待機状態を維持できる最大時間。タイムアウトすると切断状態となる。
     idleTimeout: ${db.idle.timeout:`10000`}
     # 最大コネクション保持数
-    maximumPoolSize: ${db.maximum.pool.size:`10`}
+    maximumPoolSize: ${db.maximum.pool.size:`50`}
     # 切断状態のコネクションが、プールから削除されるまでの時間
     maxLifetime: ${db.max.lifetime:`1800000`}
     # 最小コネクション保持数
@@ -87,17 +87,17 @@ datasources:
       # ロガーを Slf4J に変更
       logger: Slf4JLogger
       # ログに SQL のプロファイル情報を出力
-      profileSQL: true
+      profileSQL: false
       # サーバ側プリペアド ステートメントを含む、実行中の SQL を STDERR へダンプ
-      autoGenerateTestcaseScript: true
+      autoGenerateTestcaseScript: false
       # サーバに送られたクエリの内容を、SQLExceptions のメッセージにダンプ
       dumpQueriesOnException: true
       # 'logSlowQueries' が有効な場合、自動的に'EXPLAIN' を発行し、WARN レベルログに出力
       explainSlowQueries: true
-      # 'slowQueryThresholdMillis' より長くかかるクエリを記録
-      logSlowQueries: true
+      # 'slowQueryThresholdMillis' より長くかかるクエリを記録（※ true にすると、問題が発生した）
+      logSlowQueries: false
       # 'logSlowQueries' が有効な場合、クエリが 'slow' と記録されるまでの長さ
-      slowQueryThresholdMillis: 10
+      slowQueryThresholdMillis: 1000
 
   # 複数の DB データソースを利用する場合
   # 任意の名称で設定可能。

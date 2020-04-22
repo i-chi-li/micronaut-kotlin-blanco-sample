@@ -32,6 +32,10 @@ blancoDB で参照する、SQL 定義書は、meta/db ディレクトリに格�
 - SQL/  
   MySQL のテーブル定義 SQL を格納
 
+SQL/personal_infomation.txt は、
+[疑似個人情報データ生成サービス](https://hogehoge.tk/personal/)
+で生成したものを変換したファイルであり、個人情報は含まない。
+
 ## blancoDB でのソースコード自動生成方法
 blancoDB でのソースコード自動生成方法は、以下のようにする。
 

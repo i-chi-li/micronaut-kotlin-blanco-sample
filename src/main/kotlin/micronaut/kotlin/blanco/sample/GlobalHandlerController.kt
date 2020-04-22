@@ -98,7 +98,7 @@ class GlobalHandlerController(
     }
 
     @Get("/status")
-    @Produces("${MediaType.APPLICATION_JSON}; ${MediaType.CHARSET_PARAMETER}=utf-8")
+    @Produces(MediaType.APPLICATION_JSON)
     fun status(): HttpResponse<JsonError> {
         return HttpResponse.status(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error.")
     }
