@@ -6,10 +6,16 @@ import io.micronaut.http.MediaType
 import io.micronaut.http.annotation.Controller
 import io.micronaut.http.annotation.Get
 import io.micronaut.http.annotation.Produces
+import io.micronaut.http.annotation.QueryValue
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import micronaut.kotlin.blanco.sample.datasource.C00S01UsersIteratorConditions
 import micronaut.kotlin.blanco.sample.datasource.UserDatasource
 import micronaut.kotlin.blanco.sample.model.Users
 import org.slf4j.LoggerFactory
@@ -37,10 +43,16 @@ class DBWithCoroutineController(
     /**
      * 大量のユーザデータを生成する
      *
+     * プライマリキーがが重複している場合は、更新となる。
      * DB アクセスの性能を向上させるには、DB コネクションを分けて、並行処理をする必要がある。
+     * 同一 コネクションで、ステートメントを分けても、並行処理されない。
+     * そもそも、MySQL Connector/J の Connection は、スレッドセーフではないようだ。
      *
      * curl -i http://localhost:8080/db-coroutine/generate
+     * curl -i "http://localhost:8080/db-coroutine/generate?total=1000000&parallel=10"
      *
+     * 以下の計測値は、テーブルにインデックスを適用する前の値となる。
+     * インデックス適用後では、大体 2 倍強の時間が掛かる。
      * ## 10 万件登録
      *
      * ### スレッドで実行
@@ -59,23 +71,27 @@ class DBWithCoroutineController(
      */
     @Get("/generate")
     @Produces(MediaType.APPLICATION_JSON)
-    fun generate(): String = runBlocking {
-        log.info("Start generate")
-        var time = 0L
-        val baseData = getBaseData()
-        log.info(baseData.toString())
-        time = measureTimeMillis {
-            // 全登録ユーザ数
-            val totalUsersCount = 10_000_000
-            // 並行処理数
-            // 確認した限りでは、仮想 CPU 数 × 1.5 程度で最も効果があった
-            val concurrentCount = 12
+    fun generate(
+        @QueryValue("total")
+        totalParam: Int?,
+        @QueryValue("parallel")
+        parallelParam: Int?
+    ): String = runBlocking {
+        // 全登録ユーザ数
+        // 並行処理数で割り切れないと、登録数に誤差が発生する。
+        val totalUsersCount = totalParam ?: 1_000_000
+        // 並行処理数
+        // 確認した限りでは、仮想 CPU 数 × 1.5 程度で最も効果があった
+        val parallelCount = parallelParam ?: 10
+        log.info("Start generate [totalUsersCount: $totalUsersCount]")
+        val baseData = getBaseData(mapper)
+        val time = measureTimeMillis {
             // 1 処理あたりの登録数
-            val repeatCount = totalUsersCount / concurrentCount
+            val repeatCount = totalUsersCount / parallelCount
             // 内部の Coroutine がすべて完了するまで待機する
             // 一つでも失敗すると終了する
             coroutineScope {
-                repeat(concurrentCount) { count ->
+                repeat(parallelCount) { count ->
                     log.info("Start count: $count")
                     // Dispatchers を指定しない場合、
                     // このリクエスト処理が、開始したスレッドのみで、直列に実行をするため、並行処理されない。
@@ -103,16 +119,20 @@ class DBWithCoroutineController(
         dataSource.connection.use { connection ->
             val userDataSource = UserDatasource(connection)
             log.info("Start launch $count")
+            // insertOrUpdate 関数に処理ブロックを指定している
+            // blancoDB オブジェクトは、自動的に生成および、破棄される。
             userDataSource.insertOrUpdate {
                 runCatching {
                     repeat(repeatCount) { count2 ->
                         val userId = count * repeatCount + count2
                         val user = generateUser(baseData, userId)
+                        // insertOrUpdate 関数内の無名クラスで定義している invoke 関数を呼び出している。
                         invoke(user)
                     }
                 }.onFailure { log.error("in generate", it) }
             }
             log.info("Finish launch $count")
+            // コミット
             connection.commit()
         }
     }
@@ -123,7 +143,9 @@ class DBWithCoroutineController(
     private fun generateUser(baseData: List<User>, userId: Int): Users {
         val userNameLast = baseData.random().userNameLast
         val userNameFirst = baseData.random().userNameFirst
+        // パスワードは、文字列の順番をランダムに入れ替える
         val password = baseData.random().password.toList().shuffled().joinToString("")
+        // E-mail は、@ の前に 3 桁のランダムな数字を付加する
         val emailAddString = "%03d@".format((0 until 1000).random())
         val email = baseData.random().email.replace("@", emailAddString)
         return Users(
@@ -135,12 +157,34 @@ class DBWithCoroutineController(
     }
 
     /**
-     * ユーザデータ生成用データを取得
+     * ユーザを検索
+     *
+     * @param count 並行処理番号
+     * @param conditionsChannel ユーザデータ検索条件生成チャネル
      */
-    private fun getBaseData(): List<User> {
-        val file = Paths.get("SQL/personal_information.txt").toAbsolutePath().toFile()
-        log.info("txt file: $file")
-        return mapper.readValue(file, object : TypeReference<List<User>>() {})
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun selectUsers(
+        coroutineScope: CoroutineScope,
+        count: Int,
+        conditionsChannel: ReceiveChannel<C00S01UsersIteratorConditions>
+    ) = coroutineScope.produce<List<Users>> {
+        // DB コネクションを自動的に Close する定義
+        dataSource.connection.use { connection ->
+            val userDataSource = UserDatasource(connection)
+            log.info("Start launch $count")
+            // select 関数に処理ブロックを指定している
+            // blancoDB オブジェクトは、自動的に生成および、破棄される。
+            userDataSource.select {
+                this.runCatching {
+                    for (condition in conditionsChannel) {
+                        // select 関数内の無名クラスで定義している iterate 関数を呼び出している。
+                        val result = this.iterate(condition)
+                        send(result)
+                    }
+                }.onFailure { log.error("in selectUsers", it) }
+            }
+            log.info("Finish launch $count")
+        }
     }
 }
 
@@ -167,3 +211,14 @@ data class User(
  * build.gradle ファイルの noArg の設定を参照。
  */
 annotation class CustomBean
+
+/**
+ * ユーザデータ生成用データを取得
+ */
+fun getBaseData(mapper: ObjectMapper): List<User> {
+    val log = LoggerFactory.getLogger("getBaseData")
+    val file = Paths.get("SQL/personal_information.txt").toAbsolutePath().toFile()
+    log.info("txt file: $file")
+    return mapper.readValue(file, object : TypeReference<List<User>>() {})
+}
+

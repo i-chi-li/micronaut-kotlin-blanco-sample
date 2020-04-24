@@ -44,7 +44,25 @@ blancoDB でのソースコード自動生成方法は、以下のようにす�
 - gradlew blancoDb
 
 ## サンプルコード
+サンプルコードは、MySQL を起動した上、gradlew run で起動する。
 
 - [DB 検索・登録・更新](src/main/kotlin/micronaut/kotlin/blanco/sample/UsersController.kt)
 - [エラーハンドリング](src/main/kotlin/micronaut/kotlin/blanco/sample/GlobalHandlerController.kt)
 - [日時変換処理](src/main/kotlin/micronaut/kotlin/blanco/sample/DateController.kt)
+- [データベース並行アクセス](src/main/kotlin/micronaut/kotlin/blanco/sample/DBWithCoroutineController.kt)
+- [キュー（Channel）による処理の連携](src/main/kotlin/micronaut/kotlin/blanco/sample/)
+
+### データベース並行アクセス
+データベース並行アクセスサンプルコードには、
+users テーブルにダミーデータを登録するための処理が含まれている。
+以下のコマンドを実行すると、100 万件のダミーユーザデータ 10 並列で生成する。
+プライマリキーが既に存在する場合は、更新となるため、上書きで実行できる。
+curl -i "http://localhost:8080/db-coroutine/generate?total=1000000&parallel=10"
+
+### キュー（Channel）による処理の連携
+キュー（Channel）による処理の連携は、キューとして、Channel を利用して、
+処理間の連携を行うサンプルとなる。
+連携に関連する処理は、HTTP リクエスト、検索条件生成、
+検索実行および、検索結果判定となる。
+
+![処理の連携図](docs/img/DocsImages.png)

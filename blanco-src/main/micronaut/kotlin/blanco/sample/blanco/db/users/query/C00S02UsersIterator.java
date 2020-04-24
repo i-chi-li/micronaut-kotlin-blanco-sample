@@ -15,15 +15,15 @@ import java.util.List;
 import micronaut.kotlin.blanco.sample.blanco.db.runtime.exception.DeadlockException;
 import micronaut.kotlin.blanco.sample.blanco.db.runtime.exception.TimeoutException;
 import micronaut.kotlin.blanco.sample.blanco.db.runtime.util.BlancoDbUtil;
-import micronaut.kotlin.blanco.sample.blanco.db.users.row.C00S01UsersRow;
+import micronaut.kotlin.blanco.sample.blanco.db.users.row.C00S02UsersRow;
 
 /**
- * C00S01UsersIteratorクラス (QueryIterator)。
+ * C00S02UsersIteratorクラス (QueryIterator)。
  *
  * 検索型SQL文をラッピングして各種アクセサを提供します。<br>
  * スクロール属性: forward_only<br>
  */
-public class C00S01UsersIterator {
+public class C00S02UsersIterator {
     /**
      * このクラスが内部的に利用するデータベース接続オブジェクト。
      *
@@ -49,14 +49,14 @@ public class C00S01UsersIterator {
     protected ResultSet fResultSet;
 
     /**
-     * C00S01UsersIteratorクラスのコンストラクタ。
+     * C00S02UsersIteratorクラスのコンストラクタ。
      *
      * データベースコネクションオブジェクトを引数としてクエリクラスを作成します。<br>
      * このクラスの利用後は、必ず close()メソッドを呼び出す必要があります。<br>
      *
      * @param connection データベース接続
      */
-    public C00S01UsersIterator(final Connection connection) {
+    public C00S02UsersIterator(final Connection connection) {
         fConnection = connection;
     }
 
@@ -68,7 +68,7 @@ public class C00S01UsersIterator {
      * @return JDBCドライバに与えて実行可能な状態のSQL文。
      */
     public String getQuery() {
-        return "SELECT\n  user_id,\n  user_name,\n  password,\n  email,\n  created_at,\n  updated_at\nFROM\n  users\nWHERE\n  (? IS NULL OR user_id = ?)\n  AND (? IS NULL OR user_name LIKE ?)\n  AND (? IS NULL OR password = ?)\n  AND (? IS NULL OR email LIKE ?)\n  AND (? = FALSE OR email IS NULL)\n  AND (? IS NULL OR created_at = ?)\n  AND (? IS NULL OR updated_at = ?)\n/*replace1*/";
+        return "SELECT \n  '1'\nFROM DUAL WHERE\n  EXISTS(\n    SELECT\n      user_id\n    FROM\n      users\n    WHERE\n      (? IS NULL OR user_id >= ?)\n      AND (? IS NULL OR user_id <= ?)\n      AND (? IS NULL OR user_name LIKE ?)\n      AND (? IS NULL OR password LIKE ?)\n      AND (? IS NULL OR email LIKE ?)\n      AND (? = FALSE OR email IS NULL)\n      AND (? IS NULL OR created_at >= ?)\n      AND (? IS NULL OR created_at <= ?)\n      AND (? IS NULL OR updated_at >= ?)\n      AND (? IS NULL OR updated_at <= ?)\n  )\n;";
     }
 
     /**
@@ -104,59 +104,92 @@ public class C00S01UsersIterator {
      *
      * 内部的には PreparedStatementにSQL入力パラメータをセットします。
      *
-     * @param userId 'userId'列の値
+     * @param userIdFrom 'userIdFrom'列の値
+     * @param userIdTo 'userIdTo'列の値
      * @param userName 'userName'列の値
      * @param password 'password'列の値
      * @param email 'email'列の値
      * @param emailIncludeNull 'emailIncludeNull'列の値
-     * @param createdAt 'createdAt'列の値
-     * @param updatedAt 'updatedAt'列の値
+     * @param createdAtFrom 'createdAtFrom'列の値
+     * @param createdAtTo 'createdAtTo'列の値
+     * @param updatedAtFrom 'updatedAtFrom'列の値
+     * @param updatedAtTo 'updatedAtTo'列の値
      * @throws SQLException SQL例外が発生した場合。
      */
-    public void setInputParameter(final Integer userId, final String userName, final String password, final String email, final Boolean emailIncludeNull, final Date createdAt, final Date updatedAt) throws SQLException {
+    public void setInputParameter(final Integer userIdFrom, final Integer userIdTo, final String userName, final String password, final String email, final Boolean emailIncludeNull, final Date createdAtFrom, final Date createdAtTo, final Date updatedAtFrom, final Date updatedAtTo) throws SQLException {
         if (fStatement == null) {
             prepareStatement();
         }
-        if (userId == null) {
+        if (userIdFrom == null) {
             fStatement.setNull(1, java.sql.Types.INTEGER);
         } else {
-            fStatement.setInt(1, userId.intValue());
+            fStatement.setInt(1, userIdFrom.intValue());
         }
-        if (userId == null) {
+        if (userIdFrom == null) {
             fStatement.setNull(2, java.sql.Types.INTEGER);
         } else {
-            fStatement.setInt(2, userId.intValue());
+            fStatement.setInt(2, userIdFrom.intValue());
         }
-        fStatement.setString(3, userName);
-        fStatement.setString(4, userName);
-        fStatement.setString(5, password);
-        fStatement.setString(6, password);
-        fStatement.setString(7, email);
-        fStatement.setString(8, email);
+        if (userIdTo == null) {
+            fStatement.setNull(3, java.sql.Types.INTEGER);
+        } else {
+            fStatement.setInt(3, userIdTo.intValue());
+        }
+        if (userIdTo == null) {
+            fStatement.setNull(4, java.sql.Types.INTEGER);
+        } else {
+            fStatement.setInt(4, userIdTo.intValue());
+        }
+        fStatement.setString(5, userName);
+        fStatement.setString(6, userName);
+        fStatement.setString(7, password);
+        fStatement.setString(8, password);
+        fStatement.setString(9, email);
+        fStatement.setString(10, email);
         if (emailIncludeNull == null) {
-            fStatement.setNull(9, java.sql.Types.BIT);
+            fStatement.setNull(11, java.sql.Types.BIT);
         } else {
-            fStatement.setBoolean(9, emailIncludeNull.booleanValue());
+            fStatement.setBoolean(11, emailIncludeNull.booleanValue());
         }
-        if (createdAt == null) {
-            fStatement.setNull(10, java.sql.Types.TIMESTAMP);
-        } else {
-            fStatement.setTimestamp(10, new Timestamp(createdAt.getTime()));
-        }
-        if (createdAt == null) {
-            fStatement.setNull(11, java.sql.Types.TIMESTAMP);
-        } else {
-            fStatement.setTimestamp(11, new Timestamp(createdAt.getTime()));
-        }
-        if (updatedAt == null) {
+        if (createdAtFrom == null) {
             fStatement.setNull(12, java.sql.Types.TIMESTAMP);
         } else {
-            fStatement.setTimestamp(12, new Timestamp(updatedAt.getTime()));
+            fStatement.setTimestamp(12, new Timestamp(createdAtFrom.getTime()));
         }
-        if (updatedAt == null) {
+        if (createdAtFrom == null) {
             fStatement.setNull(13, java.sql.Types.TIMESTAMP);
         } else {
-            fStatement.setTimestamp(13, new Timestamp(updatedAt.getTime()));
+            fStatement.setTimestamp(13, new Timestamp(createdAtFrom.getTime()));
+        }
+        if (createdAtTo == null) {
+            fStatement.setNull(14, java.sql.Types.TIMESTAMP);
+        } else {
+            fStatement.setTimestamp(14, new Timestamp(createdAtTo.getTime()));
+        }
+        if (createdAtTo == null) {
+            fStatement.setNull(15, java.sql.Types.TIMESTAMP);
+        } else {
+            fStatement.setTimestamp(15, new Timestamp(createdAtTo.getTime()));
+        }
+        if (updatedAtFrom == null) {
+            fStatement.setNull(16, java.sql.Types.TIMESTAMP);
+        } else {
+            fStatement.setTimestamp(16, new Timestamp(updatedAtFrom.getTime()));
+        }
+        if (updatedAtFrom == null) {
+            fStatement.setNull(17, java.sql.Types.TIMESTAMP);
+        } else {
+            fStatement.setTimestamp(17, new Timestamp(updatedAtFrom.getTime()));
+        }
+        if (updatedAtTo == null) {
+            fStatement.setNull(18, java.sql.Types.TIMESTAMP);
+        } else {
+            fStatement.setTimestamp(18, new Timestamp(updatedAtTo.getTime()));
+        }
+        if (updatedAtTo == null) {
+            fStatement.setNull(19, java.sql.Types.TIMESTAMP);
+        } else {
+            fStatement.setTimestamp(19, new Timestamp(updatedAtTo.getTime()));
         }
     }
 
@@ -213,14 +246,9 @@ public class C00S01UsersIterator {
      * @return 行オブジェクト。
      * @throws SQLException SQL例外が発生した場合。
      */
-    public C00S01UsersRow getRow() throws SQLException {
-        C00S01UsersRow result = new C00S01UsersRow();
-        result.setUserId(fResultSet.getInt(1));
-        result.setUserName(fResultSet.getString(2));
-        result.setPassword(fResultSet.getString(3));
-        result.setEmail(fResultSet.getString(4));
-        result.setCreatedAt(BlancoDbUtil.convertTimestampToDate(fResultSet.getTimestamp(5)));
-        result.setUpdatedAt(BlancoDbUtil.convertTimestampToDate(fResultSet.getTimestamp(6)));
+    public C00S02UsersRow getRow() throws SQLException {
+        C00S02UsersRow result = new C00S02UsersRow();
+        result.set1(fResultSet.getString(1));
 
         return result;
     }
@@ -249,13 +277,13 @@ public class C00S01UsersIterator {
     /**
      * 検索結果をリストの形式で取得します。
      *
-     * リストには C00S01Usersクラスが格納されます。<br>
+     * リストには C00S02Usersクラスが格納されます。<br>
      * 検索結果の件数があらかじめわかっていて、且つ件数が少ない場合に利用することができます。<br>
      * 検索結果の件数が多い場合には、このメソッドは利用せず、代わりに next()メソッドを利用することをお勧めします。<br>
      * このQueryIteratorは FORWARD_ONLY(順方向カーソル)です。このgetListメソッドの利用は極力避けてください。または スクロールカーソルとして再生成してください。
      *
      * @param size 読み出しを行う行数。
-     * @return C00S01UsersクラスのList。検索結果が0件の場合には空のリストが戻ります。
+     * @return C00S02UsersクラスのList。検索結果が0件の場合には空のリストが戻ります。
      * @throws SQLException SQL例外が発生した場合。
      */
     public List getList(final int size) throws SQLException {
@@ -301,7 +329,7 @@ public class C00S01UsersIterator {
     protected void finalize() throws Throwable {
         super.finalize();
         if (fStatement != null) {
-            final String message = "C00S01UsersIterator : close()メソッドによるリソースの開放が行われていません。";
+            final String message = "C00S02UsersIterator : close()メソッドによるリソースの開放が行われていません。";
             System.out.println(message);
         }
     }

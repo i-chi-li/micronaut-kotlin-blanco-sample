@@ -5,6 +5,7 @@ import micronaut.kotlin.blanco.sample.blanco.db.users.query.C00I01UsersFullInvok
 import micronaut.kotlin.blanco.sample.blanco.db.users.query.C00I02UsersInsertOrUpdateInvoker
 import micronaut.kotlin.blanco.sample.blanco.db.users.query.C00S00UsersIterator
 import micronaut.kotlin.blanco.sample.blanco.db.users.query.C00S01UsersIterator
+import micronaut.kotlin.blanco.sample.blanco.db.users.query.C00S02UsersIterator
 import micronaut.kotlin.blanco.sample.blanco.db.users.row.C00S00UsersRow
 import micronaut.kotlin.blanco.sample.model.Users
 import org.slf4j.LoggerFactory
@@ -187,7 +188,7 @@ class UserDatasource(private val con: Connection) {
     }
 
     /**
-     * ユーザリストに変換する拡張関数
+     * S01 ユーザリストに変換する拡張関数
      *
      * @return ユーザリストを返す。
      */
@@ -287,43 +288,84 @@ class UserDatasource(private val con: Connection) {
      *
      * この関数は、ブロック処理が完了するまで、blancoDB オブジェクトを使い回すため、大量のアクセスに利用できる。
      *
-     * @param condition 検索条件
      * @param block 検索条件を生成し、iterate 関数を呼び出し、検索結果を処理するブロック
      */
-    fun select(
-        condition: C00S01UsersIteratorCondition,
+    suspend fun select(
         // ブロックの型を、インターフェースの拡張関数として定義していることに注目
-        block: BatchQueryIterateScope<C00S01UsersIteratorCondition, List<Users>>.() -> Unit
+        block: suspend BatchQueryIterateScope<C00S01UsersIteratorConditions, List<Users>>.() -> Unit
     ): Unit {
         val iterator = C00S01UsersIterator(con)
         runCatching {
             // 無名オブジェクトを定義し、iterate 関数を実装する。
-            object : BatchQueryIterateScope<C00S01UsersIteratorCondition, List<Users>> {
-                override fun iterate(conditions: C00S01UsersIteratorCondition): List<Users> {
-                    if (condition.sort != null) {
+            object : BatchQueryIterateScope<C00S01UsersIteratorConditions, List<Users>> {
+                override fun iterate(conditions: C00S01UsersIteratorConditions): List<Users> {
+                    if (conditions.sort != null) {
                         // ソート条件が指定されている場合
                         val sql = iterator.query
                             // 実際に動的 SQL を利用する場合は、受け取ったパラメータをそのまま代入しないこと。
                             // SQL インジェクションの危険性があり、セキュリティリスクとなる。
                             // 推奨する実装は、パラメータのチェックを行い、想定した値のみを受け付けるようにする。
-                            .replace("""/\*replace1\*/""".toRegex(), "ORDER BY ${condition.sort}")
+                            .replace("""/\*replace1\*/""".toRegex(), "ORDER BY ${conditions.sort}")
                         log.info("sql: $sql")
                         iterator.prepareStatement(sql)
                     }
                     // 検索条件を設定
                     iterator.setInputParameter(
-                        condition.userId,
-                        condition.userName,
-                        condition.password,
-                        condition.email,
-                        condition.emailIncludeNull,
-                        condition.createdAt,
-                        condition.updatedAt
+                        conditions.userId,
+                        conditions.userName,
+                        conditions.password,
+                        conditions.email,
+                        conditions.emailIncludeNull,
+                        conditions.createdAt,
+                        conditions.updatedAt
                     )
                     // 検索実行
                     iterator.executeQuery()
                     // 検索結果を返す
                     return iterator.toUsersList()
+                }
+            }
+                // 引数の関数ブロックを、この無名オブジェクトの関数として呼び出す。
+                .block()
+        }.also {
+            // finally 処理
+            iterator.close()
+        }
+    }
+
+    /**
+     * ユーザ存在検索（条件付き）
+     *
+     * この関数は、ブロック処理が完了するまで、blancoDB オブジェクトを使い回すため、大量のアクセスに利用できる。
+     *
+     * @param block 検索条件を生成し、iterate 関数を呼び出し、検索結果を処理するブロック
+     */
+    suspend fun selectExists(
+        // ブロックの型を、インターフェースの拡張関数として定義していることに注目
+        block: suspend BatchQueryIterateScope<C00S02UsersIteratorConditions, Boolean>.() -> Unit
+    ): Unit {
+        val iterator = C00S02UsersIterator(con)
+        iterator.runCatching {
+            // 無名オブジェクトを定義し、iterate 関数を実装する。
+            object : BatchQueryIterateScope<C00S02UsersIteratorConditions, Boolean> {
+                override fun iterate(conditions: C00S02UsersIteratorConditions): Boolean {
+                    // 検索条件を設定
+                    iterator.setInputParameter(
+                        conditions.userIdFrom,
+                        conditions.userIdTo,
+                        conditions.userName,
+                        conditions.password,
+                        conditions.email,
+                        conditions.emailIncludeNull,
+                        conditions.createdAtFrom,
+                        conditions.createdAtTo,
+                        conditions.updatedAtFrom,
+                        conditions.updatedAtTo
+                    )
+                    // 検索実行
+                    iterator.executeQuery()
+                    // レコード存在の有無を返す
+                    return iterator.next()
                 }
             }
                 // 引数の関数ブロックを、この無名オブジェクトの関数として呼び出す。
@@ -366,7 +408,6 @@ class UserDatasource(private val con: Connection) {
     }
 }
 
-
 /**
  * 連続登録・更新クエリ実行用スコープ
  *
@@ -387,8 +428,12 @@ interface BatchQueryIterateScope<T, R> {
 }
 
 /**
- * ユーザ検索用条件
+ * S01 ユーザ検索用条件
  *
+ * 検索条件識別子は、業務処理で利用する想定。（実際には各種情報を格納する Bean 等になるかも）
+ * 検索では利用せず、検索結果を処理する時の判定などに利用する。
+ *
+ * @property conditionId 検索条件識別子
  * @property userId ユーザID
  * @property userName ユーザ名
  * @property password パスワード
@@ -398,7 +443,8 @@ interface BatchQueryIterateScope<T, R> {
  * @property updatedAt 更新日時
  * @property sort ソート条件
  */
-data class C00S01UsersIteratorCondition(
+data class C00S01UsersIteratorConditions(
+    val conditionId: Int,
     val userId: Int?,
     val userName: String?,
     val password: String?,
@@ -407,4 +453,36 @@ data class C00S01UsersIteratorCondition(
     val createdAt: Date?,
     val updatedAt: Date?,
     val sort: String?
+)
+
+/**
+ * S02 ユーザ検索用条件
+ *
+ * 検索条件識別子は、業務処理で利用する想定。（実際には各種情報を格納する Bean 等になるかも）
+ * 検索では利用せず、検索結果を処理する時の判定などに利用する。
+ *
+ * @property conditionId 検索条件識別子
+ * @property userIdFrom ユーザID From
+ * @property userIdTo ユーザID To
+ * @property userName ユーザ名
+ * @property password パスワード
+ * @property email E-mail
+ * @property emailIncludeNull E-mail が null のレコードを検索結果に含めるフラグ
+ * @property createdAtFrom 作成日時 From
+ * @property createdAtTo 作成日時 To
+ * @property updatedAtFrom 更新日時 From
+ * @property updatedAtTo 更新日時 To
+ */
+data class C00S02UsersIteratorConditions(
+    val conditionId: Int,
+    val userIdFrom: Int?,
+    val userIdTo: Int?,
+    val userName: String?,
+    val password: String?,
+    val email: String?,
+    val emailIncludeNull: Boolean,
+    val createdAtFrom: Date?,
+    val createdAtTo: Date?,
+    val updatedAtFrom: Date?,
+    val updatedAtTo: Date?
 )

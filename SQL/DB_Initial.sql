@@ -14,6 +14,12 @@ CREATE TABLE IF NOT EXISTS `users`
     PRIMARY KEY (`user_id`)
 );
 
+CREATE INDEX idx_users_user_name ON `users` (user_name);
+CREATE INDEX idx_users_password ON `users` (password);
+CREATE INDEX idx_users_email ON `users` (email);
+CREATE INDEX idx_users_created_at ON `users` (created_at);
+CREATE INDEX idx_users_updated_at ON `users` (updated_at);
+
 INSERT INTO `users` (user_id, user_name, password, email)
 SELECT 0, '桃太　郎', 'pass001', 'momo@example.com'
 FROM dual

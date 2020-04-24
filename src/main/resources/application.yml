@@ -14,6 +14,18 @@ micronaut:
         # アクセス URL とのマッピング
         mapping: /date/**
 
+# Jackson の設定（XML 変換も対象となる）
+jackson:
+  # Jackson に Micronaut の Bean Introspection を利用させる設定
+  bean-introspection-module: true
+  serialization:
+    # インデント付きで出力
+    indentOutput: true
+    writeDatesAsTimestamps: false
+  deserialization:
+    useBigIntegerForInts: true
+    failOnUnknownProperties: false
+
 ---
 datasources:
   # デフォルトのコネクションプール設定
@@ -42,7 +54,7 @@ datasources:
     # データベース指定
     catalog: ${db.database:`sample00`}
     # コネクション時のタイムアウト(ms)
-    connectionTimeout: 1000
+    connectionTimeout: 5000
     # 未使用（アイドル状態）コネクションの切断時間(ms)
     # コネクションがプール内で待機状態を維持できる最大時間。タイムアウトすると切断状態となる。
     idleTimeout: ${db.idle.timeout:`10000`}
@@ -81,9 +93,12 @@ datasources:
       cacheServerConfiguration: true
       elideSetAutoCommits: true
       maintainTimeStats: false
+      # SQL 実行タイムアウト(コネクションの再取得が必要となる。Prepared Statement 利用時に処理の続行は困難。)
+      #socketTimeout: 2000
       # ResultSet フェッチモードをカーソルモードに変更（デフォルトは、全件一括取得）
-      useCursorFetch: true
-      defaultFetchSize: 2000
+      # カーソルモードでは、ResultSet の参照位置を戻すことや、件数の取得ができない。
+      #useCursorFetch: true
+      #defaultFetchSize: 2000
       # ロガーを Slf4J に変更
       logger: Slf4JLogger
       # ログに SQL のプロファイル情報を出力
