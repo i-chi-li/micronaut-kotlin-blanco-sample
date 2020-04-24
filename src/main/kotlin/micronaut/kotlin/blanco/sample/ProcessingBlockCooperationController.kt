@@ -252,9 +252,7 @@ class QueryResultProcessor(
             // バックグラウンドで動作する検索結果判定処理のタイムアウト設定
             withTimeout(timeout) {
                 // 検索結果の集計結果を取得
-                val (querySuccessCount, queryFailedCount, totalExistsCount) = doProcessResult(resultChannel)
-                // 検索結果の処理結果を生成して返す
-                ProcessResult.SuccessfulProcessResult(querySuccessCount, queryFailedCount, totalExistsCount)
+                doProcessResult(resultChannel)
             }
         }.onSuccess {
             // 処理が完了した場合
@@ -282,7 +280,9 @@ class QueryResultProcessor(
      * @return 検索結果の集計結果を返す。
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    private suspend fun doProcessResult(resultChannel: ReceiveChannel<QueryExecutor.QueryResult>): Triple<Long, Long, Long> {
+    private suspend fun doProcessResult(
+        resultChannel: ReceiveChannel<QueryExecutor.QueryResult>
+    ): ProcessResult.SuccessfulProcessResult {
         // 検索成功数
         var querySuccessCount = 0L
         // 検索失敗数
@@ -315,7 +315,7 @@ class QueryResultProcessor(
             }
         }
         // 検索結果の集計を返す
-        return Triple(querySuccessCount, queryFailedCount, totalExistsCount)
+        return ProcessResult.SuccessfulProcessResult(totalQueryCount, querySuccessCount, queryFailedCount, totalExistsCount)
     }
 
     /**
@@ -325,11 +325,13 @@ class QueryResultProcessor(
         /**
          * 検索結果処理結果の成功返却用
          *
+         * @property totalQueryCount クエリ総数
          * @property querySuccessCount クエリ成功回数
          * @property queryFailedCount クエリ失敗回数
          * @property totalExistsCount ユーザ数合計
          */
         data class SuccessfulProcessResult(
+            val totalQueryCount: Long,
             val querySuccessCount: Long,
             val queryFailedCount: Long,
             val totalExistsCount: Long
