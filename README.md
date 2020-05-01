@@ -50,7 +50,8 @@ blancoDB でのソースコード自動生成方法は、以下のようにす�
 - [エラーハンドリング](src/main/kotlin/micronaut/kotlin/blanco/sample/GlobalHandlerController.kt)
 - [日時変換処理](src/main/kotlin/micronaut/kotlin/blanco/sample/DateController.kt)
 - [データベース並行アクセス](src/main/kotlin/micronaut/kotlin/blanco/sample/DBWithCoroutineController.kt)
-- [キュー（Channel）による処理の連携](src/main/kotlin/micronaut/kotlin/blanco/sample/)
+- [キュー（Channel）による処理の連携](src/main/kotlin/micronaut/kotlin/blanco/sample/ProcessingBlockCooperationController.kt)
+- [アプリ起動時に Secrets Manager から DB 接続情報を取得および設定](src/main/kotlin/micronaut/kotlin/blanco/sample/Application.kt)
 
 ### データベース並行アクセス
 データベース並行アクセスサンプルコードには、
@@ -66,3 +67,24 @@ curl -i "http://localhost:8080/db-coroutine/generate?total=1000000&parallel=10"
 検索実行および、検索結果判定となる。
 
 ![処理の連携図](docs/img/DocsImages.png)
+
+以下のコマンドで実行できる。  
+timeout は、レスポンスを返すまでのタイムアウト。  
+backgroundTimeout は、検索処理がすべて完了するまでのタイムアウト。  
+selectCount は、検索総数。  
+parallelSize は、並列起動数。  
+slowQueryTime は、クエリ毎にタイムアウト時間を超えた場合、ログに出力する。
+現時点では、クエリ自体のタイムアウト停止は、コネクションが切断されてしまい、
+検索実行処理の復旧が難しいため、実現できない。
+
+```
+curl -i "http://localhost:8080/cooperation?timeout=2000&backgroundTimeout=5000&selectCount=1000&parallelSize=4&slowQueryTime=200"
+```
+
+### アプリ起動時に Secrets Manager から DB 接続情報を取得および設定
+アプリ起動オプションで、以下のように Secrets Manager の ARN を指定して、
+DB 接続情報を取得および、設定する処理が行われる。
+
+```
+gradlew run -PsecretId=arn:aws:secretsmanager:ap-northeast-1:801303654280:secret:DatabaseSecret3B817195-SAbtCKWPGWcn-kKk2JT
+```

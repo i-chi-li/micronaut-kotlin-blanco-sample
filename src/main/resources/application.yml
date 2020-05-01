@@ -52,18 +52,18 @@ datasources:
     # デフォルトは、自動コミットになる
     autoCommit: false
     # データベース指定
-    catalog: ${db.database:`sample00`}
+    catalog: ${db.default.dbname:`sample00`}
     # コネクション時のタイムアウト(ms)
-    connectionTimeout: 5000
+    connectionTimeout: ${db.default.connection.timeout:`5000`}
     # 未使用（アイドル状態）コネクションの切断時間(ms)
     # コネクションがプール内で待機状態を維持できる最大時間。タイムアウトすると切断状態となる。
-    idleTimeout: ${db.idle.timeout:`10000`}
+    idleTimeout: ${db.default.idle.timeout:`10000`}
     # 最大コネクション保持数
-    maximumPoolSize: ${db.maximum.pool.size:`50`}
+    maximumPoolSize: ${db.default.maximum.pool.size:`50`}
     # 切断状態のコネクションが、プールから削除されるまでの時間
-    maxLifetime: ${db.max.lifetime:`1800000`}
+    maxLifetime: ${db.default.max.lifetime:`1800000`}
     # 最小コネクション保持数
-    minimumIdle: ${db.minimum.idle:`0`}
+    minimumIdle: ${db.default.minimum.idle:`12`}
     # ログなどに出力されるプール名
     # デフォルトでは、「HikariPool-1」のような名称となる
     poolName: Pool-RW
@@ -122,7 +122,8 @@ datasources:
     username: ${db.default.username:`root`}
     password: ${db.default.password:}
     driverClassName: com.mysql.cj.jdbc.Driver
-    autoCommit: false
-    catalog: ${db.database:`sample00`}
+    autoCommit: true
+    catalog: ${db.default.dbname:`sample00`}
     poolName: Pool-R
+    minimumIdle: ${db.default.minimum.idle:`12`}
     readOnly: true

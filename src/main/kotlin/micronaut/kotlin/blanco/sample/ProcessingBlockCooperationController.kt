@@ -38,6 +38,7 @@ import kotlin.random.Random
  */
 @Controller("/cooperation")
 class ProcessingBlockCooperationController(
+//    @Named("readonly")
     private val dataSource: DataSource,
     private val mapper: ObjectMapper
 ) {
@@ -52,9 +53,9 @@ class ProcessingBlockCooperationController(
      *
      * @param timeoutParam リクエスト処理のタイムアウト（ms）
      * @param backgroundTimeoutParam バックグラウンド処理（検索結果判定処理など）のタイムアウト（ms）
-     * @param selectCountParam 検索数
+     * @param selectCountParam 検索総数
      * @param parallelSizeParam 並行数
-     * @param slowQueryTimeParam 遅延クエリ時間
+     * @param slowQueryTimeParam 遅延クエリ時間。遅延時間を過ぎたクエリは、ログに出力する。
      * @return 検索の集計結果を返す。
      */
     @Get("/")
@@ -159,11 +160,18 @@ class ProcessingBlockCooperationController(
             // withTimeout は、Suspend 関数なので、runBlocking を利用する。
             // 現在のスレッドをブロックするため、順次処理となる。
             runBlocking {
-                // タイムアウトまで、処理を待機
-                withTimeout(timeout) {
-                    log.info("Waiting for processing ...")
-                    // 検索結果判定の結果を結果取得
-                    resultProcessorJob.await()
+                if (timeout == 0L) {
+                    // タイムアウトが 0 なら待機せずに処理を終了
+                    resultProcessorJob.start()
+                    QueryResultProcessor.ProcessResult.SuccessfulProcessResult(
+                        0, 0, 0, 0)
+                } else {
+                    // タイムアウトまで、処理を待機
+                    withTimeout(timeout) {
+                        log.info("Waiting for processing ...")
+                        // 検索結果判定の結果を結果取得
+                        resultProcessorJob.await()
+                    }
                 }
             }
         }.onSuccess {
