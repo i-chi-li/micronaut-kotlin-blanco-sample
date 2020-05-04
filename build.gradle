@@ -8,7 +8,9 @@ plugins {
     // IntelliJ IDEA の設定をするためのプラグイン
     id "org.jetbrains.gradle.plugin.idea-ext" version "0.7"
     // Kotlin Javadoc
-    id 'org.jetbrains.dokka' version '0.10.1'
+    id "org.jetbrains.dokka" version "0.10.1"
+    // Google Jib
+    id "com.google.cloud.tools.jib" version "2.2.0"
 }
 
 version "0.1"
@@ -50,11 +52,6 @@ dependencies {
     // ERROR i.m.r.intercept.RecoveryInterceptor - Type [micronaut.kotlin.coroutine.sample.HeadlineClient$Intercepted] executed with error: Cannot convert response publisher to Reactive type (Unsupported Reactive type): interface kotlinx.coroutines.flow.Flow
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-reactive:${coroutineVersion}"
 
-    // AWS SDK 2.x
-    implementation platform("software.amazon.awssdk:bom:2.13.6")
-    // Secrets Manager
-    implementation "software.amazon.awssdk:secretsmanager"
-
     kapt platform("io.micronaut:micronaut-bom:$micronautVersion")
     kapt "io.micronaut:micronaut-inject-java"
     kapt "io.micronaut:micronaut-validation"
@@ -65,6 +62,9 @@ dependencies {
     runtimeOnly "ch.qos.logback:logback-classic:1.2.3"
     runtimeOnly "com.h2database:h2"
     runtimeOnly "com.fasterxml.jackson.module:jackson-module-kotlin:2.9.8"
+
+    // logback で、条件付き設定ファイル機能を有効にするために必要
+    runtimeOnly "org.codehaus.janino:janino:3.0.6"
 
     testImplementation platform("io.micronaut:micronaut-bom:$micronautVersion")
     testImplementation "io.micronaut.test:micronaut-test-kotlintest"
@@ -118,9 +118,40 @@ tasks.withType(JavaExec) {
     classpath += configurations.developmentOnly
     // '-Dkotlinx.coroutines.debug' は、スレッド名に Coroutine 名を追加するなど、Coroutine に関するログ出力を強化する
     jvmArgs('-noverify', '-XX:TieredStopAtLevel=1', '-Dcom.sun.management.jmxremote', '-Dkotlinx.coroutines.debug')
-    if(project.hasProperty("secretId")) {
-        println("secretId: ${project.secretId}")
-        environment += ["SECRETSMANAGER_SECRETID": project.secretId]
+}
+
+jib {
+    from {
+        image = "amazoncorretto:8"
+    }
+    to {
+        // バグ対応
+        // この Jib の バージョンでは、Windows の場合、認証ヘルパーコマンドの拡張子が ".cmd" のみと決めつけている。
+        // go get でヘルパーコマンドをインストールすると、拡張子は、".exe" となるため対応が必要となる。
+        if (System.properties["os.name"].toLowerCase().contains("windows")) {
+            credHelper = "ecr-login.exe"
+        }
+    }
+    container {
+        environment = [
+            // Docker コンテナでは、LANG 設定を以下のようにしないと文字化けする。
+            LANG             : "en_US.UTF-8",
+            // JVM のメモリ設定は、ローカル実行用の値となる。AWS 上では、下記環境変数を上書きするように設定している。
+            // jvmFlags で指定すると、上書きできないため、ここで定義する。
+            JAVA_TOOL_OPTIONS: '-Xms64m -Xmx512m'
+        ]
+        // mainClass が未定義の場合は、main 関数を自動的に検索する。
+        // ただし、main 関数が複数ある場合は、明示的に指定する必要がある。
+        mainClass = " info.ichili.apiprocess.application.Application"
+        jvmFlags = [
+            // 下のオプションを有効化する設定
+            '-XX:+UnlockExperimentalVMOptions',
+            // ヒープサイズをメモリサイズではなく CGroup のメモリ制限値を利用する設定
+            '-XX:+UseCGroupMemoryLimitForHeap',
+            // スレッド名に Coroutine 名を追加するなど、Coroutine に関するログ出力を強化する設定
+            '-Dkotlinx.coroutines.debug'
+        ]
+        ports = ['80']
     }
 }
 

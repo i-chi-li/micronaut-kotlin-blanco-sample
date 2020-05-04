@@ -19,7 +19,6 @@ import micronaut.kotlin.blanco.sample.datasource.C00S01UsersIteratorConditions
 import micronaut.kotlin.blanco.sample.datasource.UserDatasource
 import micronaut.kotlin.blanco.sample.model.Users
 import org.slf4j.LoggerFactory
-import java.nio.file.Paths
 import javax.inject.Named
 import javax.sql.DataSource
 import kotlin.system.measureTimeMillis
@@ -215,10 +214,7 @@ annotation class CustomBean
 /**
  * ユーザデータ生成用データを取得
  */
-fun getBaseData(mapper: ObjectMapper): List<User> {
-    val log = LoggerFactory.getLogger("getBaseData")
-    val file = Paths.get("SQL/personal_information.txt").toAbsolutePath().toFile()
-    log.info("txt file: $file")
-    return mapper.readValue(file, object : TypeReference<List<User>>() {})
-}
-
+fun getBaseData(mapper: ObjectMapper): List<User> =
+    ClassLoader.getSystemResourceAsStream("personal_information.txt").use { usersDataStream ->
+        mapper.readValue(usersDataStream, object : TypeReference<List<User>>() {})
+    }

@@ -1,6 +1,7 @@
 package micronaut.kotlin.blanco.sample
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import io.micronaut.context.annotation.Property
 import io.micronaut.core.convert.exceptions.ConversionErrorException
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.HttpResponse
@@ -12,6 +13,7 @@ import io.micronaut.http.annotation.Get
 import io.micronaut.http.annotation.Produces
 import io.micronaut.http.hateoas.JsonError
 import io.micronaut.http.hateoas.Link
+import io.micronaut.scheduling.annotation.Scheduled
 import org.slf4j.LoggerFactory
 
 @Controller("/handler")
@@ -101,5 +103,44 @@ class GlobalHandlerController(
     @Produces(MediaType.APPLICATION_JSON)
     fun status(): HttpResponse<JsonError> {
         return HttpResponse.status(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error.")
+    }
+}
+
+@Controller
+class ScheduleController() {
+    private val log = LoggerFactory.getLogger(this.javaClass)
+
+    // この値は、環境変数の値を除外している。
+    // Application.kt で除外指定をしている。
+    @field:Property(name = "db.secrets")
+    protected var secrets: String? = null
+
+    @field:Property(name = "db.host")
+    protected var host: String? = null
+
+    @field:Property(name = "db.hostRead")
+    protected var hostRead: String? = null
+
+    @field:Property(name = "db.port")
+    protected var port: String? = null
+
+    @field:Property(name = "db.dbname")
+    protected var dbname: String? = null
+
+    @field:Property(name = "db.username")
+    protected var username: String? = null
+
+    @field:Property(name = "db.password")
+    protected var password: String? = null
+
+    @Scheduled(initialDelay = "0m")
+    internal fun showDbInfo(
+    ) {
+        log.info("Start showDbInfo")
+        log.info("secrets: [$secrets], host: [$host], hostRead: [$hostRead], port: [$port], dbname: [$dbname], username: [$username], password: [$password]")
+        log.info("CPU: ${Runtime.getRuntime().availableProcessors()}," +
+            " maxMemory, ${Runtime.getRuntime().maxMemory()}," +
+            " totalMemory: ${Runtime.getRuntime().totalMemory()}," +
+            " freeMemory: ${Runtime.getRuntime().freeMemory()}")
     }
 }

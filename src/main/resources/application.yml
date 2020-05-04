@@ -42,28 +42,28 @@ datasources:
     # システムプロパティの場合は、キャメルケースも「-」で分割して一致する。
     # 設定とキーの一致法則については、以下の「Table 1. Property Value Normalization」を参照。
     # https://docs.micronaut.io/latest/guide/index.html#propertySource
-    url: ${db.default.url:`jdbc:mysql://localhost:3306`}
-    username: ${db.default.username:`root`}
+    url: jdbc:mysql://${db.host:`localhost`}:${db.port:`3306`}
+    username: ${db.username:`root`}
     # 【注意】デフォルト値に「``」と設定すると、パスワードありで空のパスワードを指定することになる。
     # パスワード無しの設定にするには、デフォルト値には何も設定しないこと
-    password: ${db.default.password:}
+    password: ${db.password:}
     # デフォルトでは、古いクラス指定になってしまうため、指定が必須となる
     driverClassName: 'com.mysql.cj.jdbc.Driver'
     # デフォルトは、自動コミットになる
     autoCommit: false
     # データベース指定
-    catalog: ${db.default.dbname:`sample00`}
+    catalog: ${db.dbname:`sample00`}
     # コネクション時のタイムアウト(ms)
-    connectionTimeout: ${db.default.connection.timeout:`5000`}
+    connectionTimeout: ${db.connection.timeout:`5000`}
     # 未使用（アイドル状態）コネクションの切断時間(ms)
     # コネクションがプール内で待機状態を維持できる最大時間。タイムアウトすると切断状態となる。
-    idleTimeout: ${db.default.idle.timeout:`10000`}
+    idleTimeout: ${db.idle.timeout:`10000`}
     # 最大コネクション保持数
-    maximumPoolSize: ${db.default.maximum.pool.size:`50`}
+    maximumPoolSize: ${db.maximum.pool.size:`40`}
     # 切断状態のコネクションが、プールから削除されるまでの時間
-    maxLifetime: ${db.default.max.lifetime:`1800000`}
+    maxLifetime: ${db.max.lifetime:`1800000`}
     # 最小コネクション保持数
-    minimumIdle: ${db.default.minimum.idle:`12`}
+    minimumIdle: ${db.minimum.idle:`4`}
     # ログなどに出力されるプール名
     # デフォルトでは、「HikariPool-1」のような名称となる
     poolName: Pool-RW
@@ -118,12 +118,12 @@ datasources:
   # 任意の名称で設定可能。
   # DataSource インジェクション箇所の @Named アノテーションに、この名称を指定する。
   readonly:
-    url: ${db.default.url:`jdbc:mysql://localhost:3306`}
-    username: ${db.default.username:`root`}
-    password: ${db.default.password:}
+    url: jdbc:mysql://${db.hostRead:`localhost`}:${db.port:`3306`}
+    username: ${db.username:`root`}
+    password: ${db.password:}
     driverClassName: com.mysql.cj.jdbc.Driver
     autoCommit: true
-    catalog: ${db.default.dbname:`sample00`}
+    catalog: ${db.dbname:`sample00`}
     poolName: Pool-R
-    minimumIdle: ${db.default.minimum.idle:`12`}
+    minimumIdle: ${db.minimum.idle:`4`}
     readOnly: true
