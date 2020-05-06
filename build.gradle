@@ -52,6 +52,12 @@ dependencies {
     // ERROR i.m.r.intercept.RecoveryInterceptor - Type [micronaut.kotlin.coroutine.sample.HeadlineClient$Intercepted] executed with error: Cannot convert response publisher to Reactive type (Unsupported Reactive type): interface kotlinx.coroutines.flow.Flow
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-reactive:${coroutineVersion}"
 
+    // バリデーション機能を利用する場合に必要
+    implementation "io.micronaut:micronaut-validation"
+
+    // Jackson で XML 変換を利用する場合に必要
+    implementation "io.micronaut.xml:micronaut-jackson-xml"
+
     kapt platform("io.micronaut:micronaut-bom:$micronautVersion")
     kapt "io.micronaut:micronaut-inject-java"
     kapt "io.micronaut:micronaut-validation"

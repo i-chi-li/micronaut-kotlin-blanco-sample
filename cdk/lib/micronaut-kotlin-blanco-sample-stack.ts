@@ -10,6 +10,17 @@ export class MicronautKotlinBlancoSampleStack extends cdk.Stack {
     constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
         super(scope, id, props);
 
+        let port = 80;
+
+        // ACM Certificate ARN
+        const certArn = this.node.tryGetContext("cert");
+        let certificate = null;
+        if(certArn) {
+            port = 443;
+            certificate = elb.ListenerCertificate.fromArn(
+                "arn:aws:acm:ap-northeast-1:801303654280:certificate/39b67626-84e3-4230-8071-e93b4928ce4c");
+        }
+
         // NAT Gateway Instance KeyName
         const keyName = this.node.tryGetContext("keyName");
 
@@ -17,7 +28,9 @@ export class MicronautKotlinBlancoSampleStack extends cdk.Stack {
         const natGatewayProvider = ec2.NatProvider.instance({
             // キーペア名を指定しないと、SSH ログインできないインスタンスとなる。
             keyName: keyName,
-            instanceType: new ec2.InstanceType("t3a.nano")
+            instanceType: new ec2.InstanceType("t3a.nano"),
+            // デフォルトでは、全受信許可となるので注意
+            //allowAllTraffic: false
         });
 
         // VPC
@@ -34,12 +47,12 @@ export class MicronautKotlinBlancoSampleStack extends cdk.Stack {
             }
         });
 
-        // NAT Gateway Instance 用セキュリティグループ（インスタンスへの追加は手動で行う）
-        const securityGroupNatGWI = new ec2.SecurityGroup(this, "SecurityGroupNatGWI", {
-            vpc: vpc,
-            description: "Custom NAT Instance"
+        // ELB2
+        const alb2 = new elb.ApplicationLoadBalancer(this, "EcsAlb2", {
+            vpc,
+            // 外部公開 ELB
+            internetFacing: true
         });
-        securityGroupNatGWI.addIngressRule(ec2.Peer.ipv4("219.113.206.11/32"), ec2.Port.tcp(22));
 
         // ECS タスク実行ロール
         const role = new iam.Role(this, "Role", {
@@ -125,7 +138,8 @@ export class MicronautKotlinBlancoSampleStack extends cdk.Stack {
                 // Java 8，9 の場合、-XX:ActiveProcessorCount オプションは、
                 // -XX:+UnlockExperimentalVMOptions とセットで指定する。
                 // ここでは、Docker イメージで定義しているので、以下のオプションのみで問題なし。
-                JAVA_TOOL_OPTIONS: `-Xms386m -Xmx386m -Dnocolor -XX:ActiveProcessorCount=${javaCpu}`
+                JAVA_TOOL_OPTIONS: `-Xms386m -Xmx386m -Dnocolor -XX:ActiveProcessorCount=${javaCpu}`,
+                PROXY_URL: `https://${alb2.loadBalancerDnsName}`
             },
             secrets: {
                 // 2020/05/03 時点の Fargate では、Secrets Manager の JSON 値から、
@@ -178,8 +192,12 @@ export class MicronautKotlinBlancoSampleStack extends cdk.Stack {
 
         // ELB リスナ
         const listener = alb.addListener("Listener", {
-            port: 80
+            port: port
         });
+        if(certificate) {
+            // 証明書を追加
+            listener.addCertificates("Cert", [certificate])
+        }
 
         // ELB ターゲットグループ
         const targetGroup = listener.addTargets("Ecs", {
@@ -195,5 +213,40 @@ export class MicronautKotlinBlancoSampleStack extends cdk.Stack {
             // ELB がターゲットを登録解除する前に待機する時間(0 - 3600 seconds) default 300
             deregistrationDelay: cdk.Duration.seconds(5)
         });
+
+        // --------------------------------------------------------
+
+        // ECS サービス2
+        const ecsService2 = new ecs.FargateService(this, "Service2", {
+            cluster: ecsCluster,
+            taskDefinition: taskDefinition,
+            desiredCount: 0,
+            securityGroup: securityGroupEcsService
+        });
+
+        // ELB リスナ2
+        const listener2 = alb2.addListener("Listener2", {
+            port: port
+        });
+        if(certificate) {
+            // 証明書を追加
+            listener2.addCertificates("Cert", [certificate])
+        }
+
+        // ELB ターゲットグループ2
+        const targetGroup2 = listener2.addTargets("Ecs2", {
+            port: 8080,
+            // ターゲットを指定。
+            // 指定した ECS サービスのセキュリティグループには、ELB からの入力ルールが自動追加される。
+            targets: [ecsService2],
+            healthCheck: {
+                path: "/date/now",
+                // チェック間隔(default 30 seconds)
+                interval: cdk.Duration.seconds(10)
+            },
+            // ELB がターゲットを登録解除する前に待機する時間(0 - 3600 seconds) default 300
+            deregistrationDelay: cdk.Duration.seconds(5)
+        });
+
     }
 }
