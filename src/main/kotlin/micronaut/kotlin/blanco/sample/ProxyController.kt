@@ -37,7 +37,7 @@ class ProxyController {
     private val log = LoggerFactory.getLogger(this.javaClass)
 
     @Get
-    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED, MediaType.APPLICATION_JSON)
     @Produces(CustomMediaType.APPLICATION_XML_UTF8)
     fun getProxy(
         @Header xProxy: String?,
@@ -49,7 +49,7 @@ class ProxyController {
     }
 
     @Post
-    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED, MediaType.APPLICATION_JSON)
     @Produces(CustomMediaType.APPLICATION_XML_UTF8)
     fun postProxy(
         @Body body: Any?,
