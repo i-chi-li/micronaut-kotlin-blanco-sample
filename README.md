@@ -82,9 +82,8 @@ curl -i "http://localhost:8080/cooperation?timeout=2000&backgroundTimeout=5000&s
 ```
 
 ### アプリ起動時に Secrets Manager から DB 接続情報を取得および設定
-アプリ起動オプションで、以下のように Secrets Manager の ARN を指定して、
-DB 接続情報を取得および、設定する処理が行われる。
-
-```
-gradlew run -PsecretId=arn:aws:secretsmanager:ap-northeast-1:801303654280:secret:DatabaseSecret3B817195-SAbtCKWPGWcn-kKk2JT
-```
+アプリ起動時に、DB_SECRETS 環境変数から Secrets Manager の秘密情報（JSON 文字列形式）を取得して、
+DB 接続情報を設定する処理が行われる。
+DB_SECRETS 環境変数に文字列を設定するのは、ECS タスク定義で行う前提となる。
+設定する文字列は、秘密情報を扱うための方法で定義しているため、パスワードなどが文字列になっているわけではない。
+実際の設定例は、[micronaut-kotlin-blanco-sample-stack.ts](cdk/lib/micronaut-kotlin-blanco-sample-stack.ts) を参照。
