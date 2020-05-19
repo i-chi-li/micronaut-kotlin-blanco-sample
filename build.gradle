@@ -27,12 +27,16 @@ configurations {
     developmentOnly
     // blancoDB 用の設定を定義
     blancoDb
+    // blanco resource bundle 用の設定を定義
+    blancoResourceBundle
 }
 
 dependencies {
     // blancoDB 用の依存関係を設定
     blancoDb fileTree(dir: "blanco-libs/db", includes: ["*.jar"])
     blancoDb "mysql:mysql-connector-java:${mysqlJdbcVersion}"
+    // blancoResourceBundle 用の依存関係を設定
+    blancoResourceBundle fileTree(dir: "blanco-libs/resourceBundle", includes: ["*.jar"])
 
     implementation platform("io.micronaut:micronaut-bom:$micronautVersion")
     implementation "io.micronaut:micronaut-http-client"
@@ -229,13 +233,13 @@ task blancoDb {
     doFirst {
         // blancodb Ant タスクを定義
         ant.taskdef(
-            name: "blancodb",
+            name: "blancoDb",
             classname: "blanco.db.task.BlancoDbTask",
             // 依存設定を参照
             classpath: configurations.blancoDb.asPath
         )
         // blancodb Ant タスクを実行
-        ant.blancodb(
+        ant.blancoDb(
             // 詳細なログ出力
             // 「gradlew blancoDb --debug」で実行すると、
             // "[ant:blancodb]"を含む行にログが出力される。
@@ -276,6 +280,41 @@ task blancoDb {
             encoding: "UTF-8",
             // 定義書メタファイルから中間 XML ファイルへの変換を、キャッシュで済ますかどうかを指定する
             //cache: false
+        )
+    }
+}
+
+task blancoResourceBundle {
+    group "blanco"
+    description "Generate resource bundle by blancoResourceBundle"
+    doFirst {
+        // blancoResourceBundle Ant タスクを定義
+        ant.taskdef(
+            name: "blancoResourceBundle",
+            classname: "blanco.resourcebundle.task.BlancoResourceBundleTask",
+            // 依存設定を参照
+            classpath: configurations.blancoResourceBundle.asPath
+        )
+        ant.blancoResourceBundle(
+            // リソースバンドル定義ファイル格納ディレクトリ（ファイル名はマルチバイトでも問題ない）
+            metadir: "blanco-meta/resourceBundle",
+            // 自動生成ファイル格納先ベースディレクトリ
+            targetdir: "blanco-src",
+            // 作業用ディレクトリ
+            tmpdir: "build/tmp/blanco",
+            // 自動生成ソースコードのエンコーディング指定
+            encoding: "UTF-8",
+            // プロパティファイルの生成時刻を、プロパティファイルのコメントに出力するフラグ
+            commenttimestamp: true,
+            // リソースバンドル文字列をMessageFormatによるパースを行った際に、
+            // 例外が発生したら処理を中断するかどうかのフラグ。
+            // true なら処理中断して例外を発生させます。
+            // false なら処理続行し、置換文字列は無いものとみなします。
+            // Java のソースコードを処理する際などに、
+            // あえて false に設定して波括弧を扱うことができるように切り替える場合があります。
+            failonmessageformaterror: true,
+            // プロパティファイルをディレクトリ付きで出力するフラグ
+            propertieswithdirectory: true
         )
     }
 }
