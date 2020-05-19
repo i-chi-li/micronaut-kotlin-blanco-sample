@@ -31,7 +31,7 @@ configurations {
 
 dependencies {
     // blancoDB 用の依存関係を設定
-    blancoDb fileTree(dir: "blanco-libs", includes: ["*.jar"])
+    blancoDb fileTree(dir: "blanco-libs/db", includes: ["*.jar"])
     blancoDb "mysql:mysql-connector-java:${mysqlJdbcVersion}"
 
     implementation platform("io.micronaut:micronaut-bom:$micronautVersion")
