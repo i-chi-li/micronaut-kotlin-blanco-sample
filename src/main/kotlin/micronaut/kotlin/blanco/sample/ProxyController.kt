@@ -1,5 +1,6 @@
 package micronaut.kotlin.blanco.sample
 
+import io.micronaut.context.annotation.Requires
 import io.micronaut.core.order.Ordered
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.HttpResponse
@@ -56,7 +57,7 @@ class ProxyController {
         @Header xProxy: String?,
         request: HttpRequest<*>
     ): HttpResponse<ResponseUserData> {
-        log.info("Start postProxy [X-Proxy: $xProxy]")
+        log.info("Start postProxy [X-Proxy: $xProxy, body: $body]")
         logRequest(log, request)
         return HttpResponse.ok(getResponseData("postProxy [X-Proxy: $xProxy]"))
     }
@@ -65,6 +66,7 @@ class ProxyController {
 }
 
 @Filter("\${proxy.patterns:`/proxy/**`}")
+@Requires(property = "proxy.patterns")
 class ProxyFilter(
     @Client("\${proxy.url:`http://localhost:8080`}")
     val httpClient: RxHttpClient

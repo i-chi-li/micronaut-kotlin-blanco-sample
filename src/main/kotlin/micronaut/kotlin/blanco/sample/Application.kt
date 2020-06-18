@@ -39,9 +39,9 @@ object Application {
  */
 private fun getEscapedDbPasswordPropertySource(): PropertySource {
     val map: MutableMap<String, Any> = mutableMapOf()
-    System.getenv("DB_SECRETS")?.also { dbSecrets ->
+    System.getenv("DB_SECRETS")?.also { dbSecretsStr ->
         val objectMapper = ObjectMapper()
-        objectMapper.readValue(dbSecrets, DbSecrets::class.java).let {dbSecrets ->
+        objectMapper.readValue(dbSecretsStr, DbSecrets::class.java).let {dbSecrets ->
             dbSecrets.host?.also { host ->
                 map["db.host"] = host
             }
