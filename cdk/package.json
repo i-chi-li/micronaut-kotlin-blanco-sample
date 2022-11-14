@@ -11,15 +11,15 @@
     "cdk": "cdk"
   },
   "devDependencies": {
-    "@aws-cdk/assert": "1.37.0",
-    "@aws-cdk/aws-ec2": "1.37.0",
-    "@aws-cdk/aws-ecr": "1.37.0",
-    "@aws-cdk/aws-ecs": "1.37.0",
-    "@aws-cdk/aws-elasticloadbalancingv2": "1.37.0",
-    "@aws-cdk/aws-iam": "1.37.0",
-    "@aws-cdk/aws-rds": "1.37.0",
-    "@aws-cdk/aws-s3-assets": "1.37.0",
-    "@aws-cdk/aws-secretsmanager": "1.37.0",
+    "@aws-cdk/assert": "1.180.0",
+    "@aws-cdk/aws-ec2": "1.180.0",
+    "@aws-cdk/aws-ecr": "1.180.0",
+    "@aws-cdk/aws-ecs": "1.180.0",
+    "@aws-cdk/aws-elasticloadbalancingv2": "1.180.0",
+    "@aws-cdk/aws-iam": "1.180.0",
+    "@aws-cdk/aws-rds": "1.180.0",
+    "@aws-cdk/aws-s3-assets": "1.180.0",
+    "@aws-cdk/aws-secretsmanager": "1.180.0",
     "@types/jest": "^25.2.1",
     "@types/node": "10.17.5",
     "jest": "^25.5.0",
@@ -29,7 +29,7 @@
     "typescript": "~3.7.2"
   },
   "dependencies": {
-    "@aws-cdk/core": "1.37.0",
+    "@aws-cdk/core": "1.180.0",
     "source-map-support": "^0.5.16"
   }
 }
